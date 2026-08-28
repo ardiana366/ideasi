@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Ideasi - Visual Idea Board</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .grid-bg {
+      background-size: 24px 24px;
+      background-image: radial-gradient(circle, rgba(148, 163, 184, 0.22) 1px, transparent 1px);
+    }
+
+    .node-card {
+      touch-action: none;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden flex flex-col font-sans select-none">
+
+  <!-- Top Navigation / Controls -->
+  <header class="absolute top-4 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
+    <!-- Brand / Counter -->
+    <div
+      class="flex items-center gap-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 px-3.5 py-2 rounded-2xl shadow-xl pointer-events-auto">
+      <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+      <span class="font-semibold text-xs tracking-wider text-slate-200">IDEASI</span>
+      <span id="nodeCountBadge"
+        class="text-[11px] bg-slate-700 px-2 py-0.5 rounded-full text-slate-300 font-mono">0</span>
+    </div>
+
+    <!-- Direct Actions: Export (Custom Name), Import, Clear -->
+    <div class="flex items-center gap-2 pointer-events-auto">
+      <!-- Export JSON Button -->
+      <button id="btnOpenExportModal" title="Export JSON"
+        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+        <span class="hidden sm:inline font-medium">Export</span>
+      </button>
+
+      <!-- Import JSON Button -->
+      <label title="Import JSON"
+        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5 cursor-pointer">
+        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l4 4m-4-4h12" />
+        </svg>
+        <span class="hidden sm:inline font-medium">Import</span>
+        <input type="file" id="fileImport" accept=".json" class="hidden" />
+      </label>
+
+      <!-- Clear Canvas -->
+      <button id="btnClear" title="Bersihkan Semua Ide"
+        class="p-2.5 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-rose-950/80 hover:text-rose-400 text-slate-400 rounded-2xl shadow-lg transition-all active:scale-95 text-xs">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Interactive Canvas Viewport -->
+  <main id="viewport" class="relative flex-1 w-full h-full overflow-hidden grid-bg cursor-grab active:cursor-grabbing">
+    <div id="world" class="absolute origin-top-left will-change-transform"
+      style="transform: translate(0px, 0px) scale(1);">
+      <!-- SVG Connection Lines Layer -->
+      <svg id="svgLayer" class="absolute top-0 left-0 w-[50000px] h-[50000px] pointer-events-none overflow-visible">
+        <defs>
+          <linearGradient id="edgeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#38bdf8" />
+            <stop offset="100%" stop-color="#818cf8" />
+          </linearGradient>
+        </defs>
+        <g id="connectionsGroup"></g>
+        <path id="tempLine" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="6,4" fill="none"
+          class="hidden opacity-80" />
+      </svg>
+
+      <!-- Nodes Container -->
+      <div id="nodesContainer" class="absolute top-0 left-0"></div>
+    </div>
+  </main>
+
+  <!-- Quick Input Bar (Sticky at Bottom) -->
+  <footer class="absolute bottom-5 inset-x-0 mx-auto max-w-xl px-4 z-30 pointer-events-auto">
+    <form id="ideaForm"
+      class="flex items-center gap-2 bg-slate-800/90 backdrop-blur-xl border border-slate-700/80 p-2 rounded-2xl shadow-2xl focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all">
+      <input type="text" id="ideaInput" placeholder="Tulis ide cepat... (Enter)" autocomplete="off"
+        class="flex-1 bg-transparent px-3 py-2 text-sm text-slate-100 placeholder-slate-400 outline-none" />
+      <button type="submit"
+        class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white p-2.5 rounded-xl font-medium transition-all shadow-md flex items-center justify-center shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
+    </form>
+  </footer>
+
+  <!-- Notification Toast -->
+  <div id="toast"
+    class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800/95 border border-slate-700 text-slate-200 text-xs rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2">
+    Status message
+  </div>
+
+  <!-- Export Name Modal -->
+  <div id="exportModal"
+    class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700/80 rounded-3xl w-full max-w-sm p-6 shadow-2xl text-slate-200">
+      <div class="flex items-center gap-2.5 mb-4">
+        <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-sm text-slate-100">Beri Nama File Export</h3>
+          <p class="text-[11px] text-slate-400">File akan disimpan dalam format .json</p>
+        </div>
+      </div>
+
+      <form id="exportForm" class="space-y-4">
+        <div>
+          <label for="exportFilenameInput" class="block text-xs font-medium text-slate-300 mb-1.5">Nama File:</label>
+          <div class="relative flex items-center">
+            <input type="text" id="exportFilenameInput" placeholder="nama_projek_ide"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono pr-14"
+              required />
+            <span class="absolute right-3.5 text-xs text-slate-500 font-mono pointer-events-none">.json</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" id="btnCloseExportModal"
+            class="px-4 py-2 bg-slate-700/60 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all">
+            Batal
+          </button>
+          <button type="submit"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-medium transition-all shadow-md flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Download File
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // --- State & LocalStorage ---
+    const STORAGE_KEY = 'ideaflow_nodes_v1';
+
+    let state = {
+      nodes: [],
+      connections: [],
+      pan: { x: 0, y: 0 },
+      zoom: 1
+    };
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          state.nodes = parsed.nodes || [];
+          state.connections = parsed.connections || [];
+        } catch (e) {
+          console.error("Gagal load storage", e);
+        }
+      }
+      updateBadge();
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        nodes: state.nodes,
+        connections: state.connections
+      }));
+      updateBadge();
+    }
+
+    function updateBadge() {
+      document.getElementById('nodeCountBadge').textContent = state.nodes.length;
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = `fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border text-xs rounded-xl shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-0 ${isError ? 'bg-rose-900/90 border-rose-700 text-rose-100' : 'bg-slate-800/95 border-slate-700 text-slate-100'
+        }`;
+      setTimeout(() => {
+        toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800/95 border border-slate-700 text-slate-200 text-xs rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2';
+      }, 3000);
+    }
+
+    // --- DOM Elements ---
+    const viewport = document.getElementById('viewport');
+    const world = document.getElementById('world');
+    const nodesContainer = document.getElementById('nodesContainer');
+    const connectionsGroup = document.getElementById('connectionsGroup');
+    const tempLine = document.getElementById('tempLine');
+    const ideaForm = document.getElementById('ideaForm');
+    const ideaInput = document.getElementById('ideaInput');
+
+    // --- Transform Engine (Pan & Zoom) ---
+    function updateTransform() {
+      world.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+    }
+
+    let isPanning = false;
+    let startPan = { x: 0, y: 0 };
+
+    viewport.addEventListener('pointerdown', (e) => {
+      if (e.target === viewport || e.target === world || e.target.id === 'svgLayer') {
+        isPanning = true;
+        startPan = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+        viewport.setPointerCapture(e.pointerId);
+      }
+    });
+
+    viewport.addEventListener('pointermove', (e) => {
+      if (isPanning) {
+        state.pan.x = e.clientX - startPan.x;
+        state.pan.y = e.clientY - startPan.y;
+        updateTransform();
+      }
+    });
+
+    viewport.addEventListener('pointerup', (e) => {
+      if (isPanning) {
+        isPanning = false;
+        try { viewport.releasePointerCapture(e.pointerId); } catch (_) { }
+      }
+    });
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = 0.001;
+      const newZoom = Math.min(Math.max(0.4, state.zoom - e.deltaY * zoomFactor), 2.5);
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      state.pan.x = mouseX - (mouseX - state.pan.x) * (newZoom / state.zoom);
+      state.pan.y = mouseY - (mouseY - state.pan.y) * (newZoom / state.zoom);
+      state.zoom = newZoom;
+      updateTransform();
+    }, { passive: false });
+
+    // --- Quick Idea Input ---
+    ideaForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = ideaInput.value.trim();
+      if (!text) return;
+
+      const rect = viewport.getBoundingClientRect();
+      const worldX = (rect.width / 2 - state.pan.x) / state.zoom + (Math.random() * 40 - 20);
+      const worldY = (rect.height / 2 - state.pan.y) / state.zoom + (Math.random() * 40 - 20);
+
+      const newNode = {
+        id: 'node_' + Date.now(),
+        text,
+        x: Math.round(worldX - 100),
+        y: Math.round(worldY - 35),
+        color: ['#0284c7', '#4f46e5', '#7c3aed', '#059669', '#d97706'][state.nodes.length % 5]
+      };
+
+      state.nodes.push(newNode);
+      saveState();
+      renderNode(newNode);
+      ideaInput.value = '';
+    });
+
+    // --- Node Rendering & Interactions ---
+    function renderNode(node) {
+      const el = document.createElement('div');
+      el.id = node.id;
+      el.className = 'node-card absolute p-3.5 bg-slate-800/95 border border-slate-700/80 hover:border-slate-500 rounded-2xl shadow-xl w-48 text-xs text-slate-200 cursor-move transition-shadow hover:shadow-2xl';
+      el.style.transform = `translate(${node.x}px, ${node.y}px)`;
+
+      el.innerHTML = `
+        <div class="flex items-start justify-between gap-1 mb-1.5 pointer-events-none">
+          <span class="w-2 h-2 rounded-full shrink-0 mt-0.5" style="background-color: ${node.color}"></span>
+          <button class="delete-btn pointer-events-auto text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors" title="Hapus">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <p class="font-medium text-slate-100 break-words pointer-events-none leading-relaxed">${escapeHtml(node.text)}</p>
+        
+        <!-- Connection Handle -->
+        <div 
+          class="connector-handle absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-indigo-500 hover:bg-indigo-400 border-2 border-slate-900 rounded-full cursor-crosshair shadow-md transition-transform hover:scale-125"
+          data-node-id="${node.id}"
+          title="Tarik ke ide lain untuk hubungkan"
+        ></div>
+      `;
+
+      el.querySelector('.delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeNode(node.id);
+      });
+
+      // Dragging Card
+      let isDraggingNode = false;
+      let dragOffset = { x: 0, y: 0 };
+
+      el.addEventListener('pointerdown', (e) => {
+        if (e.target.classList.contains('connector-handle') || e.target.closest('.delete-btn')) return;
+        isDraggingNode = true;
+        dragOffset = {
+          x: e.clientX / state.zoom - node.x,
+          y: e.clientY / state.zoom - node.y
+        };
+        el.setPointerCapture(e.pointerId);
+        el.classList.add('z-20', 'border-indigo-500/80');
+        e.stopPropagation();
+      });
+
+      el.addEventListener('pointermove', (e) => {
+        if (!isDraggingNode) return;
+        node.x = Math.round(e.clientX / state.zoom - dragOffset.x);
+        node.y = Math.round(e.clientY / state.zoom - dragOffset.y);
+        el.style.transform = `translate(${node.x}px, ${node.y}px)`;
+        renderConnections();
+      });
+
+      el.addEventListener('pointerup', (e) => {
+        if (isDraggingNode) {
+          isDraggingNode = false;
+          el.classList.remove('z-20', 'border-indigo-500/80');
+          try { el.releasePointerCapture(e.pointerId); } catch (_) { }
+          saveState();
+        }
+      });
+
+      // Connect Handle Drag
+      const handle = el.querySelector('.connector-handle');
+      handle.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        startConnecting(node.id, e);
+      });
+
+      nodesContainer.appendChild(el);
+    }
+
+    function removeNode(id) {
+      state.nodes = state.nodes.filter(n => n.id !== id);
+      state.connections = state.connections.filter(c => c.from !== id && c.to !== id);
+      const dom = document.getElementById(id);
+      if (dom) dom.remove();
+      renderConnections();
+      saveState();
+    }
+
+    // --- Connect Line Logic (SVG Drag) ---
+    let connectingFromId = null;
+
+    function startConnecting(fromNodeId, startEvent) {
+      connectingFromId = fromNodeId;
+      tempLine.classList.remove('hidden');
+
+      function onMove(e) {
+        const fromNode = state.nodes.find(n => n.id === connectingFromId);
+        if (!fromNode) return;
+
+        const fromPos = getNodeCenter(fromNode);
+        const mouseWorldX = (e.clientX - state.pan.x) / state.zoom;
+        const mouseWorldY = (e.clientY - state.pan.y) / state.zoom;
+
+        tempLine.setAttribute('d', getBezierPath(fromPos.x, fromPos.y, mouseWorldX, mouseWorldY));
+      }
+
+      function onUp(e) {
+        tempLine.classList.add('hidden');
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+
+        const targetEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.node-card');
+        if (targetEl && targetEl.id !== connectingFromId) {
+          const targetId = targetEl.id;
+          const exists = state.connections.some(c =>
+            (c.from === connectingFromId && c.to === targetId) ||
+            (c.from === targetId && c.to === connectingFromId)
+          );
+
+          if (!exists) {
+            state.connections.push({ from: connectingFromId, to: targetId });
+            saveState();
+            renderConnections();
+          }
+        }
+        connectingFromId = null;
+      }
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    }
+
+    function getNodeCenter(node) {
+      const el = document.getElementById(node.id);
+      const w = el ? el.offsetWidth : 192;
+      const h = el ? el.offsetHeight : 70;
+      return { x: node.x + w / 2, y: node.y + h / 2 };
+    }
+
+    function getBezierPath(x1, y1, x2, y2) {
+      const dx = Math.abs(x2 - x1) * 0.5;
+      return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+    }
+
+    function renderConnections() {
+      connectionsGroup.innerHTML = '';
+      state.connections.forEach((conn, index) => {
+        const nodeA = state.nodes.find(n => n.id === conn.from);
+        const nodeB = state.nodes.find(n => n.id === conn.to);
+        if (!nodeA || !nodeB) return;
+
+        const posA = getNodeCenter(nodeA);
+        const posB = getNodeCenter(nodeB);
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', getBezierPath(posA.x, posA.y, posB.x, posB.y));
+        path.setAttribute('stroke', 'url(#edgeGradient)');
+        path.setAttribute('stroke-width', '2.5');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('class', 'pointer-events-auto cursor-pointer hover:stroke-rose-400 transition-colors opacity-90');
+        path.setAttribute('title', 'Klik dua kali untuk hapus');
+
+        path.addEventListener('dblclick', () => {
+          state.connections.splice(index, 1);
+          saveState();
+          renderConnections();
+        });
+
+        connectionsGroup.appendChild(path);
+      });
+    }
+
+    function reRenderAll() {
+      nodesContainer.innerHTML = '';
+      connectionsGroup.innerHTML = '';
+      state.nodes.forEach(renderNode);
+      renderConnections();
+      updateBadge();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // --- Export Modal & File Naming Logic ---
+    const exportModal = document.getElementById('exportModal');
+    const exportFilenameInput = document.getElementById('exportFilenameInput');
+    const btnOpenExportModal = document.getElementById('btnOpenExportModal');
+    const btnCloseExportModal = document.getElementById('btnCloseExportModal');
+    const exportForm = document.getElementById('exportForm');
+
+    function getDefaultFilename() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `ideaflow_${year}${month}${day}_${hours}${minutes}`;
+    }
+
+    btnOpenExportModal.addEventListener('click', () => {
+      exportFilenameInput.value = getDefaultFilename();
+      exportModal.classList.remove('hidden');
+      setTimeout(() => {
+        exportFilenameInput.focus();
+        exportFilenameInput.select();
+      }, 50);
+    });
+
+    btnCloseExportModal.addEventListener('click', () => {
+      exportModal.classList.add('hidden');
+    });
+
+    exportForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      let rawName = exportFilenameInput.value.trim();
+      if (!rawName) rawName = getDefaultFilename();
+
+      // Bersihkan karakter terlarang untuk nama file & hapus akhiran .json jika diketik manual
+      let sanitized = rawName.replace(/\.json$/i, '').replace(/[/\\?%*:|"<>]/g, '_');
+      const filename = `${sanitized}.json`;
+
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        nodes: state.nodes,
+        connections: state.connections
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      exportModal.classList.add('hidden');
+      showToast(`File disimpan: ${filename}`);
+    });
+
+    // --- Import JSON Logic ---
+    document.getElementById('fileImport').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
+            throw new Error('Struktur file JSON tidak sesuai format IdeaFlow');
+          }
+          state.nodes = parsed.nodes || [];
+          state.connections = parsed.connections || [];
+          saveState();
+          reRenderAll();
+          showToast(`Berhasil import: ${file.name}`);
+        } catch (err) {
+          showToast(`Gagal Import: ${err.message}`, true);
+        } finally {
+          e.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // --- Clear All Logic ---
+    document.getElementById('btnClear').addEventListener('click', () => {
+      if (confirm('Hapus semua ide dan koneksi di kanvas ini?')) {
+        state.nodes = [];
+        state.connections = [];
+        nodesContainer.innerHTML = '';
+        connectionsGroup.innerHTML = '';
+        saveState();
+        showToast('Kanvas telah dikosongkan');
+      }
+    });
+
+    // --- Initialize Application ---
+    function init() {
+      loadState();
+      state.nodes.forEach(renderNode);
+      renderConnections();
+      updateTransform();
+    }
+
+    init();
+  </script>
+</body>
+
+</html>
