@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Ideasi - Visual Idea Board</title>
+  <title>Ideasi - Whiteboard</title>
+  <!-- Google Fonts: Handwritten Fonts (Caveat & Patrick Hand) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap"
+    rel="stylesheet">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
-            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', 'sans-serif'],
+            hand: ['"Patrick Hand"', 'cursive'],
+            marker: ['"Caveat"', 'cursive'],
           },
         },
       },
@@ -23,158 +30,530 @@
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
+      background-color: #fbfbfa;
     }
-    .grid-bg {
-      background-size: 24px 24px;
-      background-image: radial-gradient(circle, rgba(148, 163, 184, 0.22) 1px, transparent 1px);
+
+    .whiteboard-bg {
+      background-color: #fbfbfa;
+      background-image: radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px);
+      background-size: 28px 28px;
     }
-    .node-card {
+
+    .node-marker-card {
       touch-action: none;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      will-change: transform;
+      contain: layout style;
+    }
+
+    .hand-font {
+      font-family: 'Patrick Hand', cursive;
+    }
+
+    .marker-title {
+      font-family: 'Caveat', cursive;
+    }
+
+    svg path {
+      vector-effect: non-scaling-stroke;
+    }
+
+    /* Selection highlight glow */
+    .node-selected .oval-bg-stroke {
+      filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.75));
+      stroke: #2563eb !important;
+      stroke-width: 3.4px !important;
+    }
+
+    /* Disable connecting port zones when a line is selected */
+    body.line-selected-mode .port-zone {
+      pointer-events: none !important;
+    }
+
+    /* Editable inline text area */
+    .inline-editor {
+      font-family: 'Patrick Hand', cursive;
+      border: none;
+      outline: none;
+      background: transparent;
+      resize: none;
+      text-align: center;
+      width: 100%;
+      overflow: hidden;
+      line-height: 1.15;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    /* Modal scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+
+    /* Floating Node Toolbar (Colors, Stamps & Delete) */
+    .node-toolbar {
+      position: absolute;
+      z-index: 45;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 8px;
+      background: #ffffff;
+      border: 2px solid #334155;
+      border-radius: 18px;
+      box-shadow: 3px 3px 0px 0px rgba(51, 65, 85, 1);
+      transform: translateX(-50%);
+      animation: toolbarPop 0.18s ease-out;
+      font-family: 'Patrick Hand', cursive;
+      pointer-events: auto;
+    }
+
+    @keyframes toolbarPop {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.85) translateY(6px);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1) translateY(0);
+      }
+    }
+
+    .node-toolbar .toolbar-divider {
+      width: 2px;
+      height: 20px;
+      background: #cbd5e1;
+      margin: 0 2px;
+      border-radius: 2px;
+    }
+
+    .node-toolbar .color-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      flex-shrink: 0;
+      outline: none;
+    }
+
+    .node-toolbar .color-swatch:hover {
+      transform: scale(1.22);
+    }
+
+    .node-toolbar .color-swatch.active-swatch {
+      box-shadow: 0 0 0 2px #ffffff, 0 0 0 3.5px #2563eb;
+      transform: scale(1.1);
+    }
+
+    .node-toolbar .stamp-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      border: 2px solid #cbd5e1;
+      background: #f8fafc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1;
+      transition: transform 0.15s, border-color 0.15s, background-color 0.15s;
+      flex-shrink: 0;
+      outline: none;
+    }
+
+    .node-toolbar .stamp-btn:hover {
+      transform: scale(1.15);
+    }
+
+    .node-toolbar .stamp-btn.stamp-check {
+      color: #16a34a;
+    }
+
+    .node-toolbar .stamp-btn.stamp-check.active-stamp {
+      border-color: #16a34a;
+      background: #dcfce7;
+      box-shadow: 0 0 0 1.5px #16a34a;
+    }
+
+    .node-toolbar .stamp-btn.stamp-cross {
+      color: #dc2626;
+    }
+
+    .node-toolbar .stamp-btn.stamp-cross.active-stamp {
+      border-color: #dc2626;
+      background: #fee2e2;
+      box-shadow: 0 0 0 1.5px #dc2626;
+    }
+
+    .node-toolbar .stamp-btn.stamp-delete {
+      color: #e11d48;
+    }
+
+    .node-toolbar .stamp-btn.stamp-delete:hover {
+      border-color: #e11d48;
+      background: #ffe4e6;
+    }
+
+    /* Stamp Badges on Oval Top-Right */
+    .stamp-badge {
+      position: absolute;
+      top: -10px;
+      right: 4px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      font-weight: 900;
+      z-index: 25;
+      pointer-events: none;
+      border: 2.5px solid;
+      box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.15);
+      animation: stampPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes stampPop {
+      0% {
+        transform: scale(0);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .stamp-badge.stamp-check-badge {
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #15803d;
+    }
+
+    .stamp-badge.stamp-cross-badge {
+      background: #fee2e2;
+      border-color: #dc2626;
+      color: #dc2626;
     }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden flex flex-col font-sans select-none">
 
-  <!-- Top Navigation / Controls -->
+<body class="bg-[#fbfbfa] text-slate-800 h-screen w-screen overflow-hidden flex flex-col font-hand select-none">
+
+  <!-- Top Navigation / Controls (Whiteboard Toolbar Style) -->
   <header class="absolute top-4 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
     <!-- Brand / Counter -->
-    <div class="flex items-center gap-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 px-3.5 py-2 rounded-2xl shadow-xl pointer-events-auto">
-      <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
-      <span class="font-semibold text-xs tracking-wider text-slate-200">IDEASI</span>
-      <span id="nodeCountBadge" class="text-[11px] bg-slate-700 px-2 py-0.5 rounded-full text-slate-300 font-mono">0</span>
+    <div
+      class="flex items-center gap-2 bg-white/90 backdrop-blur-md border-2 border-slate-700 px-4 py-2 rounded-2xl shadow-[3px_3px_0px_0px_rgba(51,65,85,1)] pointer-events-auto">
+      <div class="w-3 h-3 rounded-full bg-blue-600 animate-pulse"></div>
+      <span class="marker-title font-bold text-xl tracking-wide text-slate-800">Ideasi</span>
+      <span id="nodeCountBadge"
+        class="text-xs bg-slate-100 border border-slate-400 px-2 py-0.5 rounded-full text-slate-700 font-mono font-bold">0</span>
     </div>
 
-    <!-- Direct Actions: Export (Custom Name), Import, Clear -->
+    <!-- Direct Actions: Tutorial Info (i), Export, Import, Clear -->
     <div class="flex items-center gap-2 pointer-events-auto">
-      <!-- Export JSON Button -->
-      <button 
-        id="btnOpenExportModal" 
-        title="Export JSON" 
-        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5"
-      >
-        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+      <!-- Tutorial Info Button (i) -->
+      <button id="btnOpenTutorial" title="Petunjuk Penggunaan"
+        class="p-2.5 bg-white hover:bg-blue-50 border-2 border-slate-700 hover:border-blue-600 text-slate-700 hover:text-blue-600 rounded-2xl shadow-[3px_3px_0px_0px_rgba(51,65,85,1)] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(51,65,85,1)] flex items-center justify-center">
+        <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <line x1="12" y1="8" x2="12" y2="8.01" />
+          <line x1="12" y1="12" x2="12" y2="16" />
         </svg>
-        <span class="hidden sm:inline font-medium">Export</span>
+      </button>
+
+      <!-- Export JSON Button -->
+      <button id="btnOpenExportModal" title="Export JSON"
+        class="px-3 py-2 bg-white hover:bg-slate-50 border-2 border-slate-700 text-slate-800 rounded-2xl shadow-[3px_3px_0px_0px_rgba(51,65,85,1)] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(51,65,85,1)] text-sm flex items-center gap-1.5 font-bold">
+        <svg class="w-4 h-4 text-blue-600 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+        <span class="hidden sm:inline">Export</span>
       </button>
 
       <!-- Import JSON Button -->
-      <label 
-        title="Import JSON" 
-        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5 cursor-pointer"
-      >
-        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l4 4m-4-4h12"/>
+      <label title="Import JSON"
+        class="px-3 py-2 bg-white hover:bg-slate-50 border-2 border-slate-700 text-slate-800 rounded-2xl shadow-[3px_3px_0px_0px_rgba(51,65,85,1)] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(51,65,85,1)] text-sm flex items-center gap-1.5 cursor-pointer font-bold">
+        <svg class="w-4 h-4 text-emerald-600 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l4 4m-4-4h12" />
         </svg>
-        <span class="hidden sm:inline font-medium">Import</span>
+        <span class="hidden sm:inline">Import</span>
         <input type="file" id="fileImport" accept=".json" class="hidden" />
       </label>
 
       <!-- Clear Canvas -->
-      <button 
-        id="btnClear" 
-        title="Bersihkan Semua Ide" 
-        class="p-2.5 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-rose-950/80 hover:text-rose-400 text-slate-400 rounded-2xl shadow-lg transition-all active:scale-95 text-xs"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+      <button id="btnClear" title="Hapus Semua Coretan"
+        class="p-2.5 bg-white hover:bg-rose-50 border-2 border-slate-700 hover:border-rose-600 text-slate-700 hover:text-rose-600 rounded-2xl shadow-[3px_3px_0px_0px_rgba(51,65,85,1)] transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(51,65,85,1)]">
+        <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
       </button>
     </div>
   </header>
 
-  <!-- Interactive Canvas Viewport -->
-  <main id="viewport" class="relative flex-1 w-full h-full overflow-hidden grid-bg cursor-grab active:cursor-grabbing">
-    <div id="world" class="absolute origin-top-left will-change-transform" style="transform: translate(0px, 0px) scale(1);">
-      <!-- SVG Connection Lines Layer -->
-      <svg id="svgLayer" class="absolute top-0 left-0 w-[50000px] h-[50000px] pointer-events-none overflow-visible">
-        <defs>
-          <linearGradient id="edgeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#38bdf8" />
-            <stop offset="100%" stop-color="#818cf8" />
-          </linearGradient>
-        </defs>
+  <!-- Interactive Canvas Viewport (Whiteboard Surface) -->
+  <main id="viewport"
+    class="relative flex-1 w-full h-full overflow-hidden whiteboard-bg cursor-grab active:cursor-grabbing">
+    <div id="world" class="absolute origin-top-left will-change-transform"
+      style="transform: translate(0px, 0px) scale(1);">
+
+      <!-- SVG Connection Lines Layer (Spidol Lines) -->
+      <svg id="svgLayer"
+        class="absolute top-0 left-0 w-[50000px] h-[50000px] pointer-events-none overflow-visible z-10">
         <g id="connectionsGroup"></g>
-        <path id="tempLine" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="6,4" fill="none" class="hidden opacity-80" />
+        <path id="tempLine" stroke="#2563eb" stroke-width="3" stroke-dasharray="6,6" stroke-linecap="round" fill="none"
+          class="hidden opacity-80 pointer-events-none" />
       </svg>
-      
-      <!-- Nodes Container -->
-      <div id="nodesContainer" class="absolute top-0 left-0"></div>
+
+      <!-- Nodes Container (Middle Z-Index) -->
+      <div id="nodesContainer" class="absolute top-0 left-0 z-20"></div>
+
+      <!-- Top Overlay SVG Layer for Endpoints / Reconnection Handles (Always on top) -->
+      <svg id="overlaySvgLayer"
+        class="absolute top-0 left-0 w-[50000px] h-[50000px] pointer-events-none overflow-visible z-30">
+        <g id="endpointsGroup"></g>
+      </svg>
     </div>
   </main>
 
-  <!-- Quick Input Bar (Sticky at Bottom) -->
-  <footer class="absolute bottom-5 inset-x-0 mx-auto max-w-xl px-4 z-30 pointer-events-auto">
-    <form id="ideaForm" class="flex items-center gap-2 bg-slate-800/90 backdrop-blur-xl border border-slate-700/80 p-2 rounded-2xl shadow-2xl focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all">
-      <input 
-        type="text" 
-        id="ideaInput" 
-        placeholder="Tulis ide cepat... (Enter)" 
-        autocomplete="off"
-        class="flex-1 bg-transparent px-3 py-2 text-sm text-slate-100 placeholder-slate-400 outline-none"
-      />
-      <button 
-        type="submit" 
-        class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white p-2.5 rounded-xl font-medium transition-all shadow-md flex items-center justify-center shrink-0"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-        </svg>
-      </button>
-    </form>
-  </footer>
-
   <!-- Notification Toast -->
-  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800/95 border border-slate-700 text-slate-200 text-xs rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2">
+  <div id="toast"
+    class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800 border-2 border-slate-900 text-white text-sm rounded-xl shadow-xl opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2 font-hand">
     Status message
   </div>
 
-  <!-- Export Name Modal -->
-  <div id="exportModal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-800 border border-slate-700/80 rounded-3xl w-full max-w-sm p-6 shadow-2xl text-slate-200">
-      <div class="flex items-center gap-2.5 mb-4">
-        <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+  <!-- Multi-Select Floating Banner -->
+  <div id="selectionBanner"
+    class="fixed bottom-6 inset-x-0 mx-auto max-w-sm px-4 z-40 pointer-events-none transition-all duration-300 transform translate-y-20 opacity-0">
+    <div
+      class="bg-white/95 backdrop-blur-md border-2 border-slate-700 px-4 py-2.5 rounded-2xl shadow-[4px_4px_0px_0px_rgba(51,65,85,1)] flex items-center justify-between pointer-events-auto">
+      <div class="flex items-center gap-2">
+        <span class="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+          <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4,4" />
+          </svg>
+        </span>
+        <span class="text-sm font-bold text-slate-800"><span id="selectedCount">0</span> Ide Terpilih</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnDeleteSelected" title="Hapus yang dipilih"
+          class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition-all">
+          Hapus
+        </button>
+        <button id="btnClearSelection" title="Batal Pilih"
+          class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all">
+          Batal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Import Options Dialog -->
+  <div id="importModal"
+    class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div
+      class="bg-white border-2 border-slate-700 rounded-3xl w-full max-w-sm p-6 shadow-[6px_6px_0px_0px_rgba(51,65,85,1)] text-slate-800 font-hand">
+      <div class="flex items-center gap-2.5 mb-3">
+        <div class="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-300">
+          <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l4 4m-4-4h12" />
           </svg>
         </div>
         <div>
-          <h3 class="font-semibold text-sm text-slate-100">Beri Nama File Export</h3>
-          <p class="text-[11px] text-slate-400">File akan disimpan dalam format .json</p>
+          <h3 class="marker-title font-bold text-2xl text-slate-800 leading-none">Opsi Import Ide</h3>
+          <p id="importFileNameLabel" class="text-xs text-slate-500 truncate max-w-[200px]">File: whiteboard.json</p>
+        </div>
+      </div>
+
+      <p class="text-sm text-slate-600 mb-4">Bagaimana Anda ingin memuat ide dari file ini?</p>
+
+      <div class="space-y-2.5">
+        <button id="btnImportAppend"
+          class="w-full text-left p-3 rounded-2xl border-2 border-slate-300 hover:border-emerald-600 hover:bg-emerald-50/50 transition-all flex items-start gap-3 group">
+          <div
+            class="p-1.5 bg-emerald-100 text-emerald-700 rounded-xl shrink-0 mt-0.5 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+            <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <div>
+            <strong class="text-sm text-slate-800 block">Tambahkan ke Canvas</strong>
+            <span class="text-xs text-slate-500">Ditempatkan di area kosong di samping grup ide lama tanpa saling
+              menimpa.</span>
+          </div>
+        </button>
+
+        <button id="btnImportReplace"
+          class="w-full text-left p-3 rounded-2xl border-2 border-slate-300 hover:border-blue-600 hover:bg-blue-50/50 transition-all flex items-start gap-3 group">
+          <div
+            class="p-1.5 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+            <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <div>
+            <strong class="text-sm text-slate-800 block">Gantikan Canvas Saat Ini</strong>
+            <span class="text-xs text-slate-500">Bersihkan seluruh whiteboard saat ini dan gantikan dengan ide dari file
+              ini.</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-200 flex justify-end">
+        <button id="btnCancelImportModal"
+          class="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 border-2 border-slate-600 text-slate-700 rounded-xl text-sm font-bold transition-all">
+          Batal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tutorial / Petunjuk Penggunaan -->
+  <div id="tutorialModal"
+    class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div
+      class="bg-white border-2 border-slate-700 rounded-3xl w-full max-w-md p-6 shadow-[6px_6px_0px_0px_rgba(51,65,85,1)] text-slate-800 font-hand max-h-[90vh] overflow-y-auto">
+
+      <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 bg-blue-100 text-blue-700 rounded-xl border border-blue-300">
+            <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <line x1="12" y1="8" x2="12" y2="8.01" />
+              <line x1="12" y1="12" x2="12" y2="16" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="marker-title font-bold text-2xl text-slate-800 leading-none">Petunjuk Penggunaan</h3>
+            <p class="text-xs text-slate-500">Cara mengoperasikan papan Ideasi</p>
+          </div>
+        </div>
+        <button id="btnCloseTutorial" class="text-slate-400 hover:text-slate-700 p-1">
+          <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-3.5 text-sm text-slate-700">
+        <!-- 1. Tulis Ide Cepat -->
+        <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <div class="p-2 bg-blue-600 text-white rounded-xl shrink-0 mt-0.5">
+            <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </div>
+          <div>
+            <span class="font-bold text-slate-900 block text-base">Tulis Ide Baru, Warna & Hapus</span>
+            <p class="text-xs leading-relaxed text-slate-600"><strong>Double Tap</strong> pada area kosong untuk memunculkan oval baru. Klik ide untuk memunculkan <strong>opsi warna</strong>, <strong>stempel Ceklis (✓) / Silang (✗)</strong>, serta tombol <strong>Hapus Ide</strong>.</p>
+          </div>
+        </div>
+
+        <!-- 2. Multi-Select & Geser Bersama -->
+        <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <div class="p-2 bg-purple-600 text-white rounded-xl shrink-0 mt-0.5">
+            <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4,4" />
+            </svg>
+          </div>
+          <div>
+            <span class="font-bold text-slate-900 block text-base">Pilih & Geser Bersama (Multi-Select)</span>
+            <p class="text-xs leading-relaxed text-slate-600">Klik/tap pada oval untuk memilihnya, lalu seret salah satu untuk memindahkan semuanya bersamaan. <strong>Klik sekali di area kosong</strong> untuk membatalkan pilihan.</p>
+          </div>
+        </div>
+
+        <!-- 3. Hubungkan Ide & Pindah Sambungan -->
+        <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <div class="p-2 bg-emerald-600 text-white rounded-xl shrink-0 mt-0.5">
+            <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
+            </svg>
+          </div>
+          <div>
+            <span class="font-bold text-slate-900 block text-base">Hubungkan & Pindah Garis</span>
+            <p class="text-xs leading-relaxed text-slate-600">Tarik tepi oval untuk menghubungkan. <strong>Klik 1x pada garis</strong> untuk memunculkan titik handle bulat, lalu seret titik tersebut ke sisi manapun (atas, bawah, kiri, kanan) dari ide lain untuk memindahkan sambungannya.</p>
+          </div>
+        </div>
+
+        <!-- 4. Zoom & Backup Data -->
+        <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+          <div class="p-2 bg-amber-600 text-white rounded-xl shrink-0 mt-0.5">
+            <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          </div>
+          <div>
+            <span class="font-bold text-slate-900 block text-base">Zoom & Backup JSON</span>
+            <p class="text-xs leading-relaxed text-slate-600">Gunakan pinch 2 jari atau scroll mouse untuk zoom. Klik tombol <strong>Export</strong> untuk menyimpan file JSON dan <strong>Import</strong> untuk memuat kembali.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 pt-3 border-t-2 border-slate-200 flex justify-end">
+        <button id="btnUnderstoodTutorial"
+          class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white border-2 border-blue-900 rounded-xl text-base font-bold transition-all shadow-sm text-center">
+          Mengerti & Mulai Menulis
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Name Modal -->
+  <div id="exportModal"
+    class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div
+      class="bg-white border-2 border-slate-700 rounded-3xl w-full max-w-sm p-6 shadow-[6px_6px_0px_0px_rgba(51,65,85,1)] text-slate-800 font-hand">
+      <div class="flex items-center gap-2.5 mb-4">
+        <div class="p-2 bg-blue-100 text-blue-700 rounded-xl border border-blue-300">
+          <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="marker-title font-bold text-2xl text-slate-800 leading-none">Beri Nama File</h3>
+          <p class="text-xs text-slate-500">File whiteboard disimpan dalam format .json</p>
         </div>
       </div>
 
       <form id="exportForm" class="space-y-4">
         <div>
-          <label for="exportFilenameInput" class="block text-xs font-medium text-slate-300 mb-1.5">Nama File:</label>
+          <label for="exportFilenameInput" class="block text-sm font-bold text-slate-700 mb-1">Nama File:</label>
           <div class="relative flex items-center">
-            <input 
-              type="text" 
-              id="exportFilenameInput" 
-              placeholder="nama_projek_ide"
-              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono pr-14"
-              required
-            />
-            <span class="absolute right-3.5 text-xs text-slate-500 font-mono pointer-events-none">.json</span>
+            <input type="text" id="exportFilenameInput" placeholder="ide_whiteboard"
+              class="w-full bg-slate-50 border-2 border-slate-600 rounded-xl px-3.5 py-2 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 font-hand pr-14"
+              required />
+            <span class="absolute right-3.5 text-sm text-slate-500 font-mono font-bold pointer-events-none">.json</span>
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-2">
-          <button 
-            type="button" 
-            id="btnCloseExportModal" 
-            class="px-4 py-2 bg-slate-700/60 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all"
-          >
+        <div class="flex items-center justify-end gap-2.5 pt-2">
+          <button type="button" id="btnCloseExportModal"
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 border-2 border-slate-600 text-slate-700 rounded-xl text-sm font-bold transition-all">
             Batal
           </button>
-          <button 
-            type="submit" 
-            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-medium transition-all shadow-md flex items-center gap-1.5"
-          >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
+          <button type="submit"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white border-2 border-blue-900 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-1.5">
             Download File
           </button>
         </div>
@@ -183,8 +562,18 @@
   </div>
 
   <script>
+    // --- Whiteboard Palette (Marker Colors) ---
+    const MARKER_PALETTE = [
+      { border: '#1e3a8a', fill: '#eff6ff', text: '#1e3a8a', dot: '#2563eb' }, // Blue Marker
+      { border: '#064e3b', fill: '#ecfdf5', text: '#064e3b', dot: '#059669' }, // Green Marker
+      { border: '#701a75', fill: '#fdf4ff', text: '#701a75', dot: '#c026d3' }, // Purple Marker
+      { border: '#7c2d12', fill: '#fff7ed', text: '#7c2d12', dot: '#ea580c' }, // Orange Marker
+      { border: '#831843', fill: '#fff1f2', text: '#831843', dot: '#e11d48' }  // Crimson Marker
+    ];
+
     // --- State & LocalStorage ---
-    const STORAGE_KEY = 'ideaflow_nodes_v1';
+    const STORAGE_KEY = 'ideaflow_whiteboard_v1';
+    const TUTORIAL_SEEN_KEY = 'ideaflow_tutorial_seen_v1';
 
     let state = {
       nodes: [],
@@ -193,13 +582,38 @@
       zoom: 1
     };
 
+    const selectedNodeIds = new Set();
+    let selectedConnectionId = null;
+    let _justInteractedWithElement = false; // Flag to prevent canvas pointerup from clearing
+    let lastUsedColorIdx = 0;
+    let activeToolbarNodeId = null;
+
+    const NODE_WIDTH = 224;
+    const NODE_HEIGHT = 88;
+
+    function normalizeConnection(c) {
+      return {
+        id: c.id || ('conn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
+        from: c.from,
+        to: c.to,
+        fromSide: c.fromSide || 'right',
+        toSide: c.toSide || 'left'
+      };
+    }
+
     function loadState() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          state.nodes = parsed.nodes || [];
-          state.connections = parsed.connections || [];
+          state.nodes = (parsed.nodes || []).map(n => ({
+            ...n,
+            stamp: n.stamp || null
+          }));
+          state.connections = (parsed.connections || []).map(normalizeConnection);
+          if (state.nodes.length > 0) {
+            lastUsedColorIdx = state.nodes[state.nodes.length - 1].colorIdx || 0;
+          }
         } catch (e) {
           console.error("Gagal load storage", e);
         }
@@ -222,29 +636,253 @@
     function showToast(msg, isError = false) {
       const toast = document.getElementById('toast');
       toast.textContent = msg;
-      toast.className = `fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border text-xs rounded-xl shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-0 ${
-        isError ? 'bg-rose-900/90 border-rose-700 text-rose-100' : 'bg-slate-800/95 border-slate-700 text-slate-100'
-      }`;
+      toast.className = `fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border-2 text-sm rounded-xl shadow-xl transition-all duration-300 transform translate-y-0 font-hand ${isError ? 'bg-rose-600 border-rose-900 text-white' : 'bg-slate-800 border-slate-900 text-white'
+        }`;
       setTimeout(() => {
-        toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800/95 border border-slate-700 text-slate-200 text-xs rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2';
+        toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800 border-2 border-slate-900 text-white text-sm rounded-xl shadow-xl opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2 font-hand';
       }, 3000);
     }
+
+    // --- Multi-Selection UI Handlers ---
+    const selectionBanner = document.getElementById('selectionBanner');
+    const selectedCount = document.getElementById('selectedCount');
+    const btnClearSelection = document.getElementById('btnClearSelection');
+    const btnDeleteSelected = document.getElementById('btnDeleteSelected');
+
+    function updateSelectionUI() {
+      document.querySelectorAll('.node-marker-card').forEach(el => {
+        if (selectedNodeIds.has(el.id)) {
+          el.classList.add('node-selected');
+        } else {
+          el.classList.remove('node-selected');
+        }
+      });
+
+      selectedCount.textContent = selectedNodeIds.size;
+      if (selectedNodeIds.size > 0) {
+        selectionBanner.classList.remove('translate-y-20', 'opacity-0');
+      } else {
+        selectionBanner.classList.add('translate-y-20', 'opacity-0');
+      }
+    }
+
+    function clearSelection() {
+      selectedNodeIds.clear();
+      selectedConnectionId = null;
+      document.body.classList.remove('line-selected-mode');
+      hideNodeToolbar();
+      updateSelectionUI();
+      renderConnections();
+      renderConnectionEndpoints();
+    }
+
+    btnClearSelection.addEventListener('click', clearSelection);
+
+    btnDeleteSelected.addEventListener('click', () => {
+      if (selectedNodeIds.size === 0) return;
+      if (confirm(`Hapus ${selectedNodeIds.size} ide yang dipilih?`)) {
+        state.nodes = state.nodes.filter(n => !selectedNodeIds.has(n.id));
+        state.connections = state.connections.filter(c => !selectedNodeIds.has(c.from) && !selectedNodeIds.has(c.to));
+        selectedNodeIds.forEach(id => {
+          const dom = document.getElementById(id);
+          if (dom) dom.remove();
+        });
+        clearSelection();
+        renderConnections();
+        saveState();
+        showToast('Ide yang dipilih telah dihapus');
+      }
+    });
+
+    // --- Floating Node Toolbar (Colors, Stamps & Delete) ---
+    function hideNodeToolbar() {
+      const tb = document.getElementById('nodeFloatingToolbar');
+      if (tb) tb.remove();
+      activeToolbarNodeId = null;
+    }
+
+    function showNodeToolbar(nodeId) {
+      hideNodeToolbar();
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      activeToolbarNodeId = nodeId;
+      const tb = document.createElement('div');
+      tb.id = 'nodeFloatingToolbar';
+      tb.className = 'node-toolbar';
+      tb.style.left = (node.x + NODE_WIDTH / 2) + 'px';
+      tb.style.top = (node.y - 18) + 'px';
+
+      // 5 Color Swatches
+      MARKER_PALETTE.forEach((color, idx) => {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        swatch.className = 'color-swatch' + (node.colorIdx === idx ? ' active-swatch' : '');
+        swatch.style.backgroundColor = color.border;
+        swatch.title = 'Ganti warna';
+        swatch.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          _justInteractedWithElement = true;
+        });
+        swatch.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setNodeColor(nodeId, idx);
+        });
+        tb.appendChild(swatch);
+      });
+
+      // Divider 1
+      const div1 = document.createElement('div');
+      div1.className = 'toolbar-divider';
+      tb.appendChild(div1);
+
+      // Checkmark Stamp Button
+      const btnCheck = document.createElement('button');
+      btnCheck.type = 'button';
+      btnCheck.className = 'stamp-btn stamp-check' + (node.stamp === 'check' ? ' active-stamp' : '');
+      btnCheck.innerHTML = '✓';
+      btnCheck.title = 'Beri tanda Ceklis';
+      btnCheck.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        _justInteractedWithElement = true;
+      });
+      btnCheck.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleNodeStamp(nodeId, 'check');
+      });
+      tb.appendChild(btnCheck);
+
+      // Cross Stamp Button
+      const btnCross = document.createElement('button');
+      btnCross.type = 'button';
+      btnCross.className = 'stamp-btn stamp-cross' + (node.stamp === 'cross' ? ' active-stamp' : '');
+      btnCross.innerHTML = '✗';
+      btnCross.title = 'Beri tanda Silang';
+      btnCross.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        _justInteractedWithElement = true;
+      });
+      btnCross.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleNodeStamp(nodeId, 'cross');
+      });
+      tb.appendChild(btnCross);
+
+      // Divider 2
+      const div2 = document.createElement('div');
+      div2.className = 'toolbar-divider';
+      tb.appendChild(div2);
+
+      // Delete Node Button in Toolbar
+      const btnDelete = document.createElement('button');
+      btnDelete.type = 'button';
+      btnDelete.className = 'stamp-btn stamp-delete';
+      btnDelete.innerHTML = `
+        <svg class="w-4 h-4 stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      `;
+      btnDelete.title = 'Hapus Ide Ini';
+      btnDelete.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        _justInteractedWithElement = true;
+      });
+      btnDelete.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedNodeIds.delete(nodeId);
+        hideNodeToolbar();
+        removeNode(nodeId);
+        updateSelectionUI();
+        showToast('Ide telah dihapus');
+      });
+      tb.appendChild(btnDelete);
+
+      tb.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        _justInteractedWithElement = true;
+      });
+
+      nodesContainer.appendChild(tb);
+    }
+
+    function setNodeColor(nodeId, colorIdx) {
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      node.colorIdx = colorIdx;
+      lastUsedColorIdx = colorIdx;
+      saveState();
+
+      // Re-render node in DOM
+      const oldEl = document.getElementById(nodeId);
+      if (oldEl) {
+        oldEl.remove();
+        renderNode(node);
+        if (selectedNodeIds.has(nodeId)) {
+          document.getElementById(nodeId)?.classList.add('node-selected');
+        }
+      }
+      renderConnections();
+      showNodeToolbar(nodeId);
+    }
+
+    function toggleNodeStamp(nodeId, stampType) {
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      node.stamp = node.stamp === stampType ? null : stampType;
+      saveState();
+
+      updateNodeStampUI(nodeId, node.stamp);
+      showNodeToolbar(nodeId);
+    }
+
+    function updateNodeStampUI(nodeId, stamp) {
+      const el = document.getElementById(nodeId);
+      if (!el) return;
+      const existing = el.querySelector('.stamp-badge');
+      if (existing) existing.remove();
+
+      if (stamp === 'check' || stamp === 'cross') {
+        const badge = document.createElement('div');
+        badge.className = 'stamp-badge ' + (stamp === 'check' ? 'stamp-check-badge' : 'stamp-cross-badge');
+        badge.innerHTML = stamp === 'check' ? '✓' : '✗';
+        el.querySelector('.relative').appendChild(badge);
+      }
+    }
+
+    // --- Keyboard delete shortcuts ---
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedNodeIds.size > 0) {
+          e.preventDefault();
+          btnDeleteSelected.click();
+        } else if (selectedConnectionId) {
+          e.preventDefault();
+          state.connections = state.connections.filter(c => c.id !== selectedConnectionId);
+          selectedConnectionId = null;
+          document.body.classList.remove('line-selected-mode');
+          saveState();
+          renderConnections();
+          renderConnectionEndpoints();
+          showToast('Koneksi dihapus');
+        }
+      }
+    });
 
     // --- DOM Elements ---
     const viewport = document.getElementById('viewport');
     const world = document.getElementById('world');
     const nodesContainer = document.getElementById('nodesContainer');
     const connectionsGroup = document.getElementById('connectionsGroup');
+    const endpointsGroup = document.getElementById('endpointsGroup');
     const tempLine = document.getElementById('tempLine');
-    const ideaForm = document.getElementById('ideaForm');
-    const ideaInput = document.getElementById('ideaInput');
 
     // --- Transform Engine (Pan & Zoom) ---
     function updateTransform() {
       world.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
     }
 
-    // Multi-Touch Pointer Tracking for Pinch-to-Zoom & Pan
+    // Multi-Touch Pointer Tracking
     const activePointers = new Map();
     let initialPinchDistance = null;
     let initialZoom = 1;
@@ -253,10 +891,12 @@
     let startSinglePan = { x: 0, y: 0 };
     let isSinglePanning = false;
 
+    let lastTapTime = 0;
+    let lastTapPos = { x: 0, y: 0 };
+    let hasMovedCanvas = false;
+
     function getDistance(p1, p2) {
-      const dx = p1.clientX - p2.clientX;
-      const dy = p1.clientY - p2.clientY;
-      return Math.hypot(dx, dy);
+      return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
     }
 
     function getMidpoint(p1, p2) {
@@ -267,13 +907,35 @@
     }
 
     viewport.addEventListener('pointerdown', (e) => {
-      if (e.target === viewport || e.target === world || e.target.id === 'svgLayer') {
+      if (e.target === viewport || e.target === world || e.target.id === 'svgLayer' || e.target.id === 'overlaySvgLayer') {
+        if (_justInteractedWithElement) {
+          _justInteractedWithElement = false;
+          return;
+        }
         activePointers.set(e.pointerId, e);
-        try { viewport.setPointerCapture(e.pointerId); } catch (_) {}
+        hasMovedCanvas = false;
+        try { viewport.setPointerCapture(e.pointerId); } catch (_) { }
 
         if (activePointers.size === 1) {
           isSinglePanning = true;
           startSinglePan = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+
+          const currentTime = Date.now();
+          const tapDist = Math.hypot(e.clientX - lastTapPos.x, e.clientY - lastTapPos.y);
+
+          if (currentTime - lastTapTime < 320 && tapDist < 25) {
+            const worldX = (e.clientX - state.pan.x) / state.zoom;
+            const worldY = (e.clientY - state.pan.y) / state.zoom;
+            const spawnX = Math.round(worldX - NODE_WIDTH / 2);
+            const spawnY = Math.round(worldY - NODE_HEIGHT / 2);
+
+            createInlineNode(spawnX, spawnY);
+            lastTapTime = 0;
+          } else {
+            lastTapTime = currentTime;
+            lastTapPos = { x: e.clientX, y: e.clientY };
+          }
+
         } else if (activePointers.size === 2) {
           isSinglePanning = false;
           const [p1, p2] = Array.from(activePointers.values());
@@ -289,14 +951,17 @@
       if (!activePointers.has(e.pointerId)) return;
       activePointers.set(e.pointerId, e);
 
-      // 1 Finger Pan
       if (activePointers.size === 1 && isSinglePanning) {
+        const dx = e.clientX - (startSinglePan.x + state.pan.x);
+        const dy = e.clientY - (startSinglePan.y + state.pan.y);
+        if (Math.hypot(dx, dy) > 4) {
+          hasMovedCanvas = true;
+        }
         state.pan.x = e.clientX - startSinglePan.x;
         state.pan.y = e.clientY - startSinglePan.y;
         updateTransform();
-      } 
-      // 2 Fingers Pinch-to-Zoom & Dual-finger Pan
-      else if (activePointers.size === 2 && initialPinchDistance) {
+      } else if (activePointers.size === 2 && initialPinchDistance) {
+        hasMovedCanvas = true;
         const [p1, p2] = Array.from(activePointers.values());
         const currentDistance = getDistance(p1, p2);
         const currentMidpoint = getMidpoint(p1, p2);
@@ -320,8 +985,16 @@
     function handlePointerUp(e) {
       if (activePointers.has(e.pointerId)) {
         activePointers.delete(e.pointerId);
-        try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
+        try { viewport.releasePointerCapture(e.pointerId); } catch (_) { }
       }
+
+      // Klik 1x di area canvas kosong -> Deselect semua garis dan oval
+      if (!hasMovedCanvas && activePointers.size === 0 && !_justInteractedWithElement) {
+        if (selectedNodeIds.size > 0 || selectedConnectionId !== null) {
+          clearSelection();
+        }
+      }
+      _justInteractedWithElement = false;
 
       if (activePointers.size === 1) {
         const remainingPointer = Array.from(activePointers.values())[0];
@@ -337,7 +1010,7 @@
     viewport.addEventListener('pointerup', handlePointerUp);
     viewport.addEventListener('pointercancel', handlePointerUp);
 
-    // Zoom via Mouse Wheel (Desktop)
+    // Zoom via Mouse Wheel
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
       const zoomFactor = 0.0012;
@@ -352,100 +1025,322 @@
       updateTransform();
     }, { passive: false });
 
-    // --- Quick Idea Input ---
-    ideaForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = ideaInput.value.trim();
-      if (!text) return;
-
-      const rect = viewport.getBoundingClientRect();
-      const worldX = (rect.width / 2 - state.pan.x) / state.zoom + (Math.random() * 40 - 20);
-      const worldY = (rect.height / 2 - state.pan.y) / state.zoom + (Math.random() * 40 - 20);
+    // --- Inline Direct Node Creation ---
+    function createInlineNode(x, y) {
+      const colorIndex = lastUsedColorIdx;
+      const rotation = (Math.random() * 3.6 - 1.8).toFixed(1);
 
       const newNode = {
         id: 'node_' + Date.now(),
-        text,
-        x: Math.round(worldX - 100),
-        y: Math.round(worldY - 35),
-        color: ['#0284c7', '#4f46e5', '#7c3aed', '#059669', '#d97706'][state.nodes.length % 5]
+        text: '',
+        x,
+        y,
+        colorIdx: colorIndex,
+        rotation: parseFloat(rotation),
+        stamp: null
       };
 
       state.nodes.push(newNode);
       saveState();
       renderNode(newNode);
-      ideaInput.value = '';
-    });
+      renderConnections();
 
-    // --- Node Rendering & Interactions ---
-    function renderNode(node) {
-      const el = document.createElement('div');
-      el.id = node.id;
-      el.className = 'node-card absolute p-3.5 bg-slate-800/95 border border-slate-700/80 hover:border-slate-500 rounded-2xl shadow-xl w-48 text-xs text-slate-200 cursor-move transition-shadow hover:shadow-2xl';
-      el.style.transform = `translate(${node.x}px, ${node.y}px)`;
-      
-      el.innerHTML = `
-        <div class="flex items-start justify-between gap-1 mb-1.5 pointer-events-none">
-          <span class="w-2 h-2 rounded-full shrink-0 mt-0.5" style="background-color: ${node.color}"></span>
-          <button class="delete-btn pointer-events-auto text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors" title="Hapus">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <p class="font-medium text-slate-100 break-words pointer-events-none leading-relaxed">${escapeHtml(node.text)}</p>
-        
-        <!-- Connection Handle -->
-        <div 
-          class="connector-handle absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-indigo-500 hover:bg-indigo-400 border-2 border-slate-900 rounded-full cursor-crosshair shadow-md transition-transform hover:scale-125"
-          data-node-id="${node.id}"
-          title="Tarik ke ide lain untuk hubungkan"
-        ></div>
-      `;
+      const el = document.getElementById(newNode.id);
+      if (el) {
+        enableInlineEditing(el, newNode, true);
+      }
+    }
 
-      el.querySelector('.delete-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        removeNode(node.id);
+    // --- Port Coordinate Positioning & Nearest Port Resolver ---
+    function getPortPosition(node, side) {
+      switch (side) {
+        case 'top':
+          return { x: node.x + NODE_WIDTH / 2, y: node.y + 8 };
+        case 'bottom':
+          return { x: node.x + NODE_WIDTH / 2, y: node.y + NODE_HEIGHT - 8 };
+        case 'left':
+          return { x: node.x + 16, y: node.y + NODE_HEIGHT / 2 };
+        case 'right':
+        default:
+          return { x: node.x + NODE_WIDTH - 16, y: node.y + NODE_HEIGHT / 2 };
+      }
+    }
+
+    function getClosestPortSide(node, worldX, worldY) {
+      const ports = [
+        { side: 'top', x: node.x + NODE_WIDTH / 2, y: node.y + 8 },
+        { side: 'bottom', x: node.x + NODE_WIDTH / 2, y: node.y + NODE_HEIGHT - 8 },
+        { side: 'left', x: node.x + 16, y: node.y + NODE_HEIGHT / 2 },
+        { side: 'right', x: node.x + NODE_WIDTH - 16, y: node.y + NODE_HEIGHT / 2 }
+      ];
+
+      let closestSide = 'right';
+      let minDist = Infinity;
+
+      ports.forEach(p => {
+        const dist = Math.hypot(p.x - worldX, p.y - worldY);
+        if (dist < minDist) {
+          minDist = dist;
+          closestSide = p.side;
+        }
       });
 
-      // Dragging Card
-      let isDraggingNode = false;
-      let dragOffset = { x: 0, y: 0 };
+      return closestSide;
+    }
+
+    // --- Node Rendering with Instant Responsive Multi-Select, Drag & Stamp ---
+    function renderNode(node) {
+      const theme = MARKER_PALETTE[node.colorIdx || 0] || MARKER_PALETTE[0];
+      const el = document.createElement('div');
+      el.id = node.id;
+      el.className = `node-marker-card absolute w-56 cursor-move select-none ${selectedNodeIds.has(node.id) ? 'node-selected' : ''}`;
+      el.style.transform = `translate3d(${node.x}px, ${node.y}px, 0px) rotate(${node.rotation || 0}deg)`;
+
+      let stampHtml = '';
+      if (node.stamp === 'check') {
+        stampHtml = '<div class="stamp-badge stamp-check-badge">✓</div>';
+      } else if (node.stamp === 'cross') {
+        stampHtml = '<div class="stamp-badge stamp-cross-badge">✗</div>';
+      }
+
+      el.innerHTML = `
+        <div class="relative w-full p-4 flex flex-col items-center justify-center min-h-[88px]">
+          <!-- Hand-Drawn Marker Oval SVG Background -->
+          <svg class="absolute inset-0 w-full h-full pointer-events-none overflow-visible" preserveAspectRatio="none" viewBox="0 0 220 90">
+            <path 
+              class="oval-bg-stroke"
+              d="M 20 45 C 18 18, 50 8, 110 8 C 170 8, 202 18, 200 45 C 198 72, 170 82, 110 82 C 50 82, 22 72, 20 45 Z" 
+              fill="${theme.fill}" 
+              stroke="${theme.border}" 
+              stroke-width="2.6" 
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path 
+              d="M 22 47 C 20 22, 54 10, 112 10 C 168 10, 198 22, 197 47 C 196 70, 166 80, 108 80 C 52 80, 24 70, 22 47 Z" 
+              fill="none" 
+              stroke="${theme.border}" 
+              stroke-width="1.2" 
+              opacity="0.5"
+              stroke-linecap="round"
+            />
+          </svg>
+
+          <!-- 4 Invisible Seamless Edge Touch/Drag Zones (Atas, Bawah, Kiri, Kanan) -->
+          <div class="port-zone absolute top-0 inset-x-0 mx-auto w-24 h-5 cursor-crosshair z-10" data-side="top" title="Tarik dari atas untuk hubungkan ide vertikal"></div>
+          <div class="port-zone absolute bottom-0 inset-x-0 mx-auto w-24 h-5 cursor-crosshair z-10" data-side="bottom" title="Tarik dari bawah untuk hubungkan ide vertikal"></div>
+          <div class="port-zone absolute left-0 inset-y-0 my-auto w-8 h-14 cursor-crosshair z-10" data-side="left" title="Tarik dari kiri untuk hubungkan"></div>
+          <div class="port-zone absolute right-0 inset-y-0 my-auto w-8 h-14 cursor-crosshair z-10" data-side="right" title="Tarik dari kanan untuk hubungkan"></div>
+
+          <!-- Stamp Badge -->
+          ${stampHtml}
+
+          <!-- Inline Text Container -->
+          <div class="text-wrapper relative z-0 w-full px-4 flex items-center justify-center min-h-[36px]">
+            <p class="node-text hand-font text-base sm:text-lg font-bold text-center break-words leading-tight pointer-events-none w-full" style="color: ${theme.text}">
+              ${escapeHtml(node.text) || '<span class="text-slate-400 font-normal italic">Ketik ide di sini...</span>'}
+            </p>
+          </div>
+        </div>
+      `;
+
+      // 4-Way Seamless Port Drag Listeners
+      el.querySelectorAll('.port-zone').forEach(port => {
+        port.addEventListener('pointerdown', (e) => {
+          if (selectedConnectionId !== null) return;
+          e.stopPropagation();
+          _justInteractedWithElement = true;
+          const side = port.getAttribute('data-side');
+          startConnecting(node.id, side, e);
+        });
+      });
+
+      // Double Click pada Oval untuk edit teks
+      let nodeLastTap = 0;
+      el.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('.port-zone') || el.querySelector('textarea')) return;
+        const now = Date.now();
+        if (now - nodeLastTap < 280) {
+          hideNodeToolbar();
+          enableInlineEditing(el, node);
+          nodeLastTap = 0;
+          e.stopPropagation();
+          return;
+        }
+        nodeLastTap = now;
+      });
+
+      // Ultra-Responsive Multi-Select & Drag Logic
+      let isDragging = false;
+      let startPointerPos = { x: 0, y: 0 };
+      let initialNodesPositions = new Map();
+      let hasDragged = false;
+      let rafPending = false;
 
       el.addEventListener('pointerdown', (e) => {
-        if (e.target.classList.contains('connector-handle') || e.target.closest('.delete-btn')) return;
-        isDraggingNode = true;
-        dragOffset = {
-          x: e.clientX / state.zoom - node.x,
-          y: e.clientY / state.zoom - node.y
-        };
+        if (e.target.closest('.port-zone') || el.querySelector('textarea')) return;
+
+        _justInteractedWithElement = true;
+
+        if (selectedConnectionId !== null) {
+          selectedConnectionId = null;
+          document.body.classList.remove('line-selected-mode');
+          renderConnections();
+          renderConnectionEndpoints();
+          return; // Stop here to prevent accidental node drag when dismissing line selection
+        }
+
+        isDragging = true;
+        hasDragged = false;
+        startPointerPos = { x: e.clientX, y: e.clientY };
+
+        initialNodesPositions.clear();
+        const activeGroup = selectedNodeIds.has(node.id) ? selectedNodeIds : new Set([node.id]);
+        activeGroup.forEach(id => {
+          const n = state.nodes.find(item => item.id === id);
+          if (n) initialNodesPositions.set(id, { x: n.x, y: n.y });
+        });
+
         el.setPointerCapture(e.pointerId);
-        el.classList.add('z-20', 'border-indigo-500/80');
+        el.classList.add('z-20');
         e.stopPropagation();
       });
 
       el.addEventListener('pointermove', (e) => {
-        if (!isDraggingNode) return;
-        node.x = Math.round(e.clientX / state.zoom - dragOffset.x);
-        node.y = Math.round(e.clientY / state.zoom - dragOffset.y);
-        el.style.transform = `translate(${node.x}px, ${node.y}px)`;
-        renderConnections();
-      });
+        if (!isDragging) return;
+        const deltaX = e.clientX - startPointerPos.x;
+        const deltaY = e.clientY - startPointerPos.y;
 
-      el.addEventListener('pointerup', (e) => {
-        if (isDraggingNode) {
-          isDraggingNode = false;
-          el.classList.remove('z-20', 'border-indigo-500/80');
-          try { el.releasePointerCapture(e.pointerId); } catch (_) {}
-          saveState();
+        if (!hasDragged && Math.hypot(deltaX, deltaY) > 6) {
+          hasDragged = true;
+          hideNodeToolbar();
+        }
+
+        if (!hasDragged) return;
+
+        const deltaWorldX = deltaX / state.zoom;
+        const deltaWorldY = deltaY / state.zoom;
+
+        initialNodesPositions.forEach((pos, id) => {
+          const n = state.nodes.find(item => item.id === id);
+          if (n) {
+            n.x = Math.round(pos.x + deltaWorldX);
+            n.y = Math.round(pos.y + deltaWorldY);
+          }
+        });
+
+        if (!rafPending) {
+          rafPending = true;
+          requestAnimationFrame(() => {
+            initialNodesPositions.forEach((pos, id) => {
+              const dom = document.getElementById(id);
+              const n = state.nodes.find(item => item.id === id);
+              if (dom && n) {
+                dom.style.transform = `translate3d(${n.x}px, ${n.y}px, 0px) rotate(${n.rotation || 0}deg)`;
+              }
+            });
+            renderConnectionsFast();
+            rafPending = false;
+          });
         }
       });
 
-      // Connect Handle Drag
-      const handle = el.querySelector('.connector-handle');
-      handle.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        startConnecting(node.id, e);
+      el.addEventListener('pointerup', (e) => {
+        if (isDragging) {
+          isDragging = false;
+          el.classList.remove('z-20');
+          try { el.releasePointerCapture(e.pointerId); } catch (_) { }
+
+          if (!hasDragged && !el.querySelector('textarea')) {
+            // Tap / Click
+            if (selectedNodeIds.has(node.id)) {
+              selectedNodeIds.delete(node.id);
+              if (selectedNodeIds.size === 0) {
+                hideNodeToolbar();
+              } else {
+                hideNodeToolbar();
+              }
+            } else {
+              selectedNodeIds.add(node.id);
+              showNodeToolbar(node.id);
+            }
+            updateSelectionUI();
+          } else if (hasDragged) {
+            saveState();
+            renderConnections();
+            if (selectedNodeIds.has(node.id) && selectedNodeIds.size === 1) {
+              showNodeToolbar(node.id);
+            }
+          }
+        }
       });
 
       nodesContainer.appendChild(el);
+    }
+
+    // --- Inline Text Editing directly inside the oval ---
+    function enableInlineEditing(el, node, isNew = false) {
+      const textWrapper = el.querySelector('.text-wrapper');
+      if (!textWrapper || el.querySelector('textarea')) return;
+
+      const theme = MARKER_PALETTE[node.colorIdx || 0] || MARKER_PALETTE[0];
+      const currentText = node.text || '';
+
+      const textarea = document.createElement('textarea');
+      textarea.className = 'inline-editor text-base sm:text-lg font-bold leading-tight';
+      textarea.style.color = theme.text;
+      textarea.value = currentText;
+      textarea.rows = 2;
+      textarea.placeholder = 'Ketik ide...';
+
+      textWrapper.innerHTML = '';
+      textWrapper.appendChild(textarea);
+
+      function autoGrow() {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.max(36, textarea.scrollHeight) + 'px';
+      }
+
+      textarea.addEventListener('input', autoGrow);
+      textarea.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        _justInteractedWithElement = true;
+      });
+
+      function saveInlineText() {
+        const val = textarea.value.trim();
+        if (val) {
+          node.text = val;
+          saveState();
+        } else if (isNew && !val) {
+          removeNode(node.id);
+          return;
+        }
+
+        textWrapper.innerHTML = `
+          <p class="node-text hand-font text-base sm:text-lg font-bold text-center break-words leading-tight pointer-events-none w-full" style="color: ${theme.text}">
+            ${escapeHtml(node.text) || '<span class="text-slate-400 font-normal italic">Ketik ide di sini...</span>'}
+          </p>
+        `;
+      }
+
+      textarea.addEventListener('blur', saveInlineText, { once: true });
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          textarea.blur();
+        }
+        if (e.key === 'Escape') {
+          textarea.value = currentText;
+          textarea.blur();
+        }
+      });
+
+      setTimeout(() => {
+        textarea.focus();
+        textarea.select();
+        autoGrow();
+      }, 50);
     }
 
     function removeNode(id) {
@@ -453,129 +1348,160 @@
       state.connections = state.connections.filter(c => c.from !== id && c.to !== id);
       const dom = document.getElementById(id);
       if (dom) dom.remove();
+      if (activeToolbarNodeId === id) hideNodeToolbar();
       renderConnections();
       saveState();
+      updateBadge();
     }
 
-    // --- Obstacle Avoidance Routing Algorithm for Clean Wires ---
-    function getNodeBounds(node, padding = 16) {
-      const el = document.getElementById(node.id);
-      const w = el ? el.offsetWidth : 192;
-      const h = el ? el.offsetHeight : 70;
-      return {
-        left: node.x - padding,
-        top: node.y - padding,
-        right: node.x + w + padding,
-        bottom: node.y + h + padding,
-        width: w,
-        height: h,
-        centerX: node.x + w / 2,
-        centerY: node.y + h / 2
-      };
+    // Distance from point P to line segment (A, B)
+    function distPointToSegment(p, a, b) {
+      const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+      if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+      let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
     }
 
-    function lineIntersectsRect(p1, p2, rect) {
-      // Periksa apakah segmen garis lurus memotong kotak pembatas node
-      const minX = Math.min(p1.x, p2.x);
-      const maxX = Math.max(p1.x, p2.x);
-      const minY = Math.min(p1.y, p2.y);
-      const maxY = Math.max(p1.y, p2.y);
+    // --- High Quality Smooth S-Curve Wave Obstacle Avoidance Routing ---
+    function generateSCurveSmartPath(nodeA, nodeB, explicitFromSide, explicitToSide, allNodes) {
+      const fromSide = explicitFromSide || (nodeB.x >= nodeA.x ? 'right' : 'left');
+      const toSide = explicitToSide || (nodeB.x >= nodeA.x ? 'left' : 'right');
 
-      // Simple AABB Box overlap test
-      if (maxX < rect.left || minX > rect.right || maxY < rect.top || minY > rect.bottom) {
-        return false;
-      }
+      const pStart = getPortPosition(nodeA, fromSide);
+      const pEnd = getPortPosition(nodeB, toSide);
+      const dx = pEnd.x - pStart.x;
+      const dy = pEnd.y - pStart.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
 
-      // Check against segment intersection with 4 sides of rect
-      function ccw(A, B, C) {
-        return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
-      }
-      function intersect(A, B, C, D) {
-        return ccw(A, C, D) !== ccw(B, C, D) && ccw(A, B, C) !== ccw(A, B, D);
-      }
-
-      const tl = { x: rect.left, y: rect.top };
-      const tr = { x: rect.right, y: rect.top };
-      const br = { x: rect.right, y: rect.bottom };
-      const bl = { x: rect.left, y: rect.bottom };
-
-      return intersect(p1, p2, tl, tr) ||
-             intersect(p1, p2, tr, br) ||
-             intersect(p1, p2, br, bl) ||
-             intersect(p1, p2, bl, tl);
-    }
-
-    function generateSmartPath(nodeA, nodeB, allNodes) {
-      const bA = getNodeBounds(nodeA, 0);
-      const bB = getNodeBounds(nodeB, 0);
-
-      // Best Connection Anchor Points: Hubungkan dari sisi terdekat (Kanan/Kiri)
-      let startX = bA.right;
-      let startY = bA.centerY;
-      let endX = bB.left;
-      let endY = bB.centerY;
-
-      if (bA.centerX > bB.centerX) {
-        startX = bA.left;
-        endX = bB.right;
-      }
-
-      const pStart = { x: startX, y: startY };
-      const pEnd = { x: endX, y: endY };
-
-      // Cari node rintangan di antara nodeA dan nodeB
       const obstacleNodes = allNodes.filter(n => n.id !== nodeA.id && n.id !== nodeB.id);
-      let hitNode = null;
-      let maxOverlap = 0;
+      const hitObstacles = [];
 
       for (const obs of obstacleNodes) {
-        const obsBounds = getNodeBounds(obs, 20);
-        if (lineIntersectsRect(pStart, pEnd, obsBounds)) {
-          // Cari rintangan terdekat/terbesar
-          hitNode = obsBounds;
-          break;
+        const obsCenter = { x: obs.x + NODE_WIDTH / 2, y: obs.y + NODE_HEIGHT / 2 };
+        const distToLine = distPointToSegment(obsCenter, pStart, pEnd);
+
+        if (distToLine < 75) {
+          const bMinX = Math.min(pStart.x, pEnd.x) - 20;
+          const bMaxX = Math.max(pStart.x, pEnd.x) + 20;
+          const bMinY = Math.min(pStart.y, pEnd.y) - 60;
+          const bMaxY = Math.max(pStart.y, pEnd.y) + 60;
+
+          if (obsCenter.x >= bMinX && obsCenter.x <= bMaxX && obsCenter.y >= bMinY && obsCenter.y <= bMaxY) {
+            hitObstacles.push(obs);
+          }
         }
       }
 
-      // Jika ada ide lain yang terhalang, belokkan rute kurva melewati atas atau bawah kotak tersebut
-      if (hitNode) {
-        const detourAboveY = hitNode.top - 20;
-        const detourBelowY = hitNode.bottom + 20;
-        const midY = (pStart.y + pEnd.y) / 2;
+      // Liukan S melengkung halus ke ATAS ide yang menghalangi
+      if (hitObstacles.length > 0) {
+        let highestTop = Infinity;
+        let sumCenterX = 0;
+        let leftmostObsX = Infinity;
+        let rightmostObsX = -Infinity;
 
-        // Pilih rute memutar terdekat (atas atau bawah)
-        const chosenY = Math.abs(midY - detourAboveY) < Math.abs(midY - detourBelowY) ? detourAboveY : detourBelowY;
-        const midX = hitNode.centerX;
+        hitObstacles.forEach(obs => {
+          if (obs.y < highestTop) highestTop = obs.y;
+          if (obs.x < leftmostObsX) leftmostObsX = obs.x;
+          if (obs.x + NODE_WIDTH > rightmostObsX) rightmostObsX = obs.x + NODE_WIDTH;
+          sumCenterX += (obs.x + NODE_WIDTH / 2);
+        });
 
-        // Rute 2 segmen Bezier lengkung melingkari rintangan
-        return `M ${startX} ${startY} Q ${startX + (midX - startX) * 0.5} ${chosenY}, ${midX} ${chosenY} T ${endX} ${endY}`;
+        const peakY = highestTop - 45;
+        const midX = sumCenterX / hitObstacles.length;
+
+        const beforeX = Math.max(pStart.x + 30, leftmostObsX - 45);
+        const afterX = Math.min(pEnd.x - 30, rightmostObsX + 45);
+
+        const c1x = pStart.x + (beforeX - pStart.x) * 0.6;
+        const c2x = afterX + (pEnd.x - afterX) * 0.4;
+
+        return `M ${pStart.x} ${pStart.y} C ${c1x} ${pStart.y}, ${beforeX - 35} ${peakY}, ${midX} ${peakY} C ${afterX + 35} ${peakY}, ${c2x} ${pEnd.y}, ${pEnd.x} ${pEnd.y}`;
       }
 
-      // Standar Bezier Smooth jika jalan bersih
-      const dx = Math.abs(endX - startX) * 0.5;
-      return `M ${startX} ${startY} C ${startX + (startX < endX ? dx : -dx)} ${startY}, ${endX + (startX < endX ? -dx : dx)} ${endY}, ${endX} ${endY}`;
+      // Jalur Bersih Tanpa Rintangan
+      const handleDistX = Math.min(Math.max(absDx * 0.5, 40), 160);
+      const handleDistY = Math.min(Math.max(absDy * 0.5, 40), 160);
+
+      let c1x = pStart.x, c1y = pStart.y;
+      let c2x = pEnd.x, c2y = pEnd.y;
+
+      if (fromSide === 'right') c1x += handleDistX;
+      else if (fromSide === 'left') c1x -= handleDistX;
+      else if (fromSide === 'bottom') c1y += handleDistY;
+      else if (fromSide === 'top') c1y -= handleDistY;
+
+      if (toSide === 'left') c2x -= handleDistX;
+      else if (toSide === 'right') c2x += handleDistX;
+      else if (toSide === 'top') c2y -= handleDistY;
+      else if (toSide === 'bottom') c2y += handleDistY;
+
+      return `M ${pStart.x} ${pStart.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${pEnd.x} ${pEnd.y}`;
     }
 
     // --- Connect Line Logic (SVG Drag) ---
     let connectingFromId = null;
+    let connectingFromSide = 'right';
 
-    function startConnecting(fromNodeId, startEvent) {
+    function startConnecting(fromNodeId, fromSide, startEvent) {
+      if (selectedConnectionId !== null) return;
+
       connectingFromId = fromNodeId;
+      connectingFromSide = fromSide;
       tempLine.classList.remove('hidden');
 
       function onMove(e) {
         const fromNode = state.nodes.find(n => n.id === connectingFromId);
         if (!fromNode) return;
 
-        const bFrom = getNodeBounds(fromNode, 0);
+        const pStart = getPortPosition(fromNode, connectingFromSide);
         const mouseWorldX = (e.clientX - state.pan.x) / state.zoom;
         const mouseWorldY = (e.clientY - state.pan.y) / state.zoom;
 
-        const startX = mouseWorldX > bFrom.centerX ? bFrom.right : bFrom.left;
-        const startY = bFrom.centerY;
-        const dx = Math.abs(mouseWorldX - startX) * 0.5;
+        const elements = document.elementsFromPoint(e.clientX, e.clientY);
+        let targetNodeEl = null;
+        for (const elem of elements) {
+          if (!targetNodeEl && elem.closest?.('.node-marker-card')) targetNodeEl = elem.closest('.node-marker-card');
+        }
 
-        tempLine.setAttribute('d', `M ${startX} ${startY} C ${startX + dx} ${startY}, ${mouseWorldX - dx} ${mouseWorldY}, ${mouseWorldX} ${mouseWorldY}`);
+        let targetX = mouseWorldX;
+        let targetY = mouseWorldY;
+        let targetSide = null;
+
+        if (targetNodeEl && targetNodeEl.id !== connectingFromId) {
+          const tNode = state.nodes.find(n => n.id === targetNodeEl.id);
+          if (tNode) {
+            targetSide = getClosestPortSide(tNode, mouseWorldX, mouseWorldY);
+            const snap = getPortPosition(tNode, targetSide);
+            targetX = snap.x;
+            targetY = snap.y;
+          }
+        }
+
+        const dx = targetX - pStart.x;
+        const dy = targetY - pStart.y;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        const handleDistX = Math.min(Math.max(absDx * 0.5, 30), 150);
+        const handleDistY = Math.min(Math.max(absDy * 0.5, 30), 150);
+
+        let cx1 = pStart.x, cy1 = pStart.y;
+        if (connectingFromSide === 'right') cx1 += handleDistX;
+        else if (connectingFromSide === 'left') cx1 -= handleDistX;
+        else if (connectingFromSide === 'bottom') cy1 += handleDistY;
+        else if (connectingFromSide === 'top') cy1 -= handleDistY;
+
+        let cx2 = targetX, cy2 = targetY;
+        if (targetSide === 'left') cx2 -= handleDistX;
+        else if (targetSide === 'right') cx2 += handleDistX;
+        else if (targetSide === 'top') cy2 -= handleDistY;
+        else if (targetSide === 'bottom') cy2 += handleDistY;
+        else {
+          cx2 = targetX - (dx >= 0 ? handleDistX : -handleDistX);
+        }
+
+        tempLine.setAttribute('d', `M ${pStart.x} ${pStart.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${targetX} ${targetY}`);
       }
 
       function onUp(e) {
@@ -583,16 +1509,30 @@
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
 
-        const targetEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.node-card');
-        if (targetEl && targetEl.id !== connectingFromId) {
-          const targetId = targetEl.id;
-          const exists = state.connections.some(c => 
-            (c.from === connectingFromId && c.to === targetId) || 
-            (c.from === targetId && c.to === connectingFromId)
-          );
+        const mouseWorldX = (e.clientX - state.pan.x) / state.zoom;
+        const mouseWorldY = (e.clientY - state.pan.y) / state.zoom;
 
-          if (!exists) {
-            state.connections.push({ from: connectingFromId, to: targetId });
+        const elements = document.elementsFromPoint(e.clientX, e.clientY);
+        let targetNodeEl = null;
+        for (const elem of elements) {
+          if (!targetNodeEl && elem.closest?.('.node-marker-card')) targetNodeEl = elem.closest('.node-marker-card');
+        }
+
+        if (targetNodeEl && targetNodeEl.id !== connectingFromId) {
+          const targetId = targetNodeEl.id;
+          const targetNode = state.nodes.find(n => n.id === targetId);
+
+          if (targetNode) {
+            const targetSide = getClosestPortSide(targetNode, mouseWorldX, mouseWorldY);
+
+            state.connections.push({
+              id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+              from: connectingFromId,
+              to: targetId,
+              fromSide: connectingFromSide,
+              toSide: targetSide
+            });
+
             saveState();
             renderConnections();
           }
@@ -604,43 +1544,298 @@
       window.addEventListener('pointerup', onUp);
     }
 
+    // --- Render Connections with Clean Marker Styling & Interactive Hit Testing ---
     function renderConnections() {
       connectionsGroup.innerHTML = '';
-      state.connections.forEach((conn, index) => {
+      state.connections.forEach((conn) => {
         const nodeA = state.nodes.find(n => n.id === conn.from);
         const nodeB = state.nodes.find(n => n.id === conn.to);
         if (!nodeA || !nodeB) return;
 
-        const smartPathData = generateSmartPath(nodeA, nodeB, state.nodes);
+        const isSelected = selectedConnectionId === conn.id;
+        const pathData = generateSCurveSmartPath(nodeA, nodeB, conn.fromSide, conn.toSide, state.nodes);
+
+        const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hitPath.setAttribute('d', pathData);
+        hitPath.setAttribute('stroke', 'transparent');
+        hitPath.setAttribute('stroke-width', '28');
+        hitPath.setAttribute('fill', 'none');
+        hitPath.setAttribute('class', 'pointer-events-auto cursor-pointer');
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', smartPathData);
-        path.setAttribute('stroke', 'url(#edgeGradient)');
-        path.setAttribute('stroke-width', '2.5');
+        path.id = `edge_${conn.id}`;
+        path.setAttribute('d', pathData);
+        path.setAttribute('stroke', isSelected ? '#2563eb' : '#334155');
+        path.setAttribute('stroke-width', isSelected ? '4' : '3');
+        path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('fill', 'none');
-        path.setAttribute('class', 'pointer-events-auto cursor-pointer hover:stroke-rose-400 transition-colors opacity-90');
-        path.setAttribute('title', 'Klik dua kali untuk hapus garis koneksi');
+        path.setAttribute('class', 'pointer-events-auto cursor-pointer hover:stroke-rose-600 transition-colors opacity-90');
+        path.setAttribute('title', 'Klik sekali untuk ubah sambungan, klik 2x untuk hapus');
 
-        path.addEventListener('dblclick', () => {
-          state.connections.splice(index, 1);
+        function selectThisConnection(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          _justInteractedWithElement = true;
+
+          selectedNodeIds.clear();
+          hideNodeToolbar();
+          updateSelectionUI();
+
+          selectedConnectionId = conn.id;
+          document.body.classList.add('line-selected-mode');
+          renderConnections();
+          renderConnectionEndpoints();
+        }
+
+        hitPath.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          _justInteractedWithElement = true;
+        });
+        hitPath.addEventListener('click', selectThisConnection);
+
+        path.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          _justInteractedWithElement = true;
+        });
+        path.addEventListener('click', selectThisConnection);
+
+        path.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          state.connections = state.connections.filter(c => c.id !== conn.id);
+          selectedConnectionId = null;
+          document.body.classList.remove('line-selected-mode');
           saveState();
           renderConnections();
+          renderConnectionEndpoints();
+          showToast('Koneksi dihapus');
         });
 
+        connectionsGroup.appendChild(hitPath);
         connectionsGroup.appendChild(path);
       });
+
+      renderConnectionEndpoints();
+    }
+
+    // Render Draggable Handle Dots on Start & End of Selected Connection
+    function renderConnectionEndpoints() {
+      endpointsGroup.innerHTML = '';
+      if (!selectedConnectionId) return;
+
+      const conn = state.connections.find(c => c.id === selectedConnectionId);
+      if (!conn) return;
+
+      const nodeA = state.nodes.find(n => n.id === conn.from);
+      const nodeB = state.nodes.find(n => n.id === conn.to);
+      if (!nodeA || !nodeB) return;
+
+      const posA = getPortPosition(nodeA, conn.fromSide || (nodeB.x >= nodeA.x ? 'right' : 'left'));
+      const posB = getPortPosition(nodeB, conn.toSide || (nodeB.x >= nodeA.x ? 'left' : 'right'));
+
+      [
+        { pos: posA, isStart: true, node: nodeA },
+        { pos: posB, isStart: false, node: nodeB }
+      ].forEach(({ pos, isStart, node }) => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'pointer-events-auto cursor-grab');
+
+        // Large invisible touch hit area (radius 26px) so user never misses the handle
+        const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hitArea.setAttribute('cx', pos.x);
+        hitArea.setAttribute('cy', pos.y);
+        hitArea.setAttribute('r', '26');
+        hitArea.setAttribute('fill', 'transparent');
+        hitArea.setAttribute('stroke', 'transparent');
+        hitArea.setAttribute('class', 'pointer-events-auto');
+
+        // Visible sharp handle dot with drop shadow
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', pos.x);
+        circle.setAttribute('cy', pos.y);
+        circle.setAttribute('r', '11');
+        circle.setAttribute('fill', '#2563eb');
+        circle.setAttribute('stroke', '#ffffff');
+        circle.setAttribute('stroke-width', '3');
+        circle.setAttribute('class', 'pointer-events-none');
+        circle.setAttribute('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))');
+
+        g.appendChild(hitArea);
+        g.appendChild(circle);
+
+        g.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          _justInteractedWithElement = true;
+          startReconnecting(conn.id, isStart, e);
+        });
+
+        endpointsGroup.appendChild(g);
+      });
+    }
+
+    // Dragging Connection Endpoint to New Node/Port with Real-Time Snapping
+    function startReconnecting(connId, isStart, startEvent) {
+      const conn = state.connections.find(c => c.id === connId);
+      if (!conn) return;
+
+      const fixedNode = isStart ? state.nodes.find(n => n.id === conn.to) : state.nodes.find(n => n.id === conn.from);
+      const fixedSide = isStart ? (conn.toSide || 'left') : (conn.fromSide || 'right');
+      if (!fixedNode) return;
+
+      tempLine.classList.remove('hidden');
+
+      function onMove(e) {
+        e.preventDefault();
+        const fixedPos = getPortPosition(fixedNode, fixedSide);
+        const mouseWorldX = (e.clientX - state.pan.x) / state.zoom;
+        const mouseWorldY = (e.clientY - state.pan.y) / state.zoom;
+
+        const elements = document.elementsFromPoint(e.clientX, e.clientY);
+        let targetNodeEl = null;
+        for (const elem of elements) {
+          if (!targetNodeEl && elem.closest?.('.node-marker-card')) targetNodeEl = elem.closest('.node-marker-card');
+        }
+
+        let targetX = mouseWorldX;
+        let targetY = mouseWorldY;
+        let targetSide = null;
+
+        if (targetNodeEl && targetNodeEl.id !== fixedNode.id) {
+          const tNode = state.nodes.find(n => n.id === targetNodeEl.id);
+          if (tNode) {
+            targetSide = getClosestPortSide(tNode, mouseWorldX, mouseWorldY);
+            const snap = getPortPosition(tNode, targetSide);
+            targetX = snap.x;
+            targetY = snap.y;
+          }
+        }
+
+        const dx = targetX - fixedPos.x;
+        const dy = targetY - fixedPos.y;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        const handleDistX = Math.min(Math.max(absDx * 0.5, 30), 150);
+        const handleDistY = Math.min(Math.max(absDy * 0.5, 30), 150);
+
+        let cx1 = fixedPos.x, cy1 = fixedPos.y;
+        if (fixedSide === 'right') cx1 += handleDistX;
+        else if (fixedSide === 'left') cx1 -= handleDistX;
+        else if (fixedSide === 'bottom') cy1 += handleDistY;
+        else if (fixedSide === 'top') cy1 -= handleDistY;
+
+        let cx2 = targetX, cy2 = targetY;
+        if (targetSide === 'left') cx2 -= handleDistX;
+        else if (targetSide === 'right') cx2 += handleDistX;
+        else if (targetSide === 'top') cy2 -= handleDistY;
+        else if (targetSide === 'bottom') cy2 += handleDistY;
+        else {
+          cx2 = targetX - (dx >= 0 ? handleDistX : -handleDistX);
+        }
+
+        tempLine.setAttribute('d', `M ${fixedPos.x} ${fixedPos.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${targetX} ${targetY}`);
+      }
+
+      function onUp(e) {
+        tempLine.classList.add('hidden');
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+
+        const mouseWorldX = (e.clientX - state.pan.x) / state.zoom;
+        const mouseWorldY = (e.clientY - state.pan.y) / state.zoom;
+
+        const elements = document.elementsFromPoint(e.clientX, e.clientY);
+        let targetNodeEl = null;
+        for (const elem of elements) {
+          if (!targetNodeEl && elem.closest?.('.node-marker-card')) targetNodeEl = elem.closest('.node-marker-card');
+        }
+
+        if (targetNodeEl && targetNodeEl.id !== fixedNode.id) {
+          const targetId = targetNodeEl.id;
+          const targetNode = state.nodes.find(n => n.id === targetId);
+
+          if (targetNode) {
+            const targetSide = getClosestPortSide(targetNode, mouseWorldX, mouseWorldY);
+
+            if (isStart) {
+              conn.from = targetId;
+              conn.fromSide = targetSide;
+            } else {
+              conn.to = targetId;
+              conn.toSide = targetSide;
+            }
+
+            saveState();
+            showToast(`Koneksi terhubung ke sisi ${targetSide.toUpperCase()}`);
+          }
+        }
+
+        renderConnections();
+      }
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+    }
+
+    function renderConnectionsFast() {
+      state.connections.forEach((conn) => {
+        const nodeA = state.nodes.find(n => n.id === conn.from);
+        const nodeB = state.nodes.find(n => n.id === conn.to);
+        if (!nodeA || !nodeB) return;
+
+        const pathData = generateSCurveSmartPath(nodeA, nodeB, conn.fromSide, conn.toSide, state.nodes);
+        const pathEl = document.getElementById(`edge_${conn.id}`);
+        if (pathEl) {
+          pathEl.setAttribute('d', pathData);
+          const hitArea = pathEl.previousElementSibling;
+          if (hitArea && hitArea.tagName === 'path' && hitArea.getAttribute('stroke') === 'transparent') {
+            hitArea.setAttribute('d', pathData);
+          }
+        }
+      });
+      renderConnectionEndpoints();
     }
 
     function reRenderAll() {
       nodesContainer.innerHTML = '';
       connectionsGroup.innerHTML = '';
+      endpointsGroup.innerHTML = '';
+      hideNodeToolbar();
       state.nodes.forEach(renderNode);
       renderConnections();
       updateBadge();
+      updateSelectionUI();
     }
 
     function escapeHtml(str) {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // --- Tutorial Modal Logic ---
+    const tutorialModal = document.getElementById('tutorialModal');
+    const btnOpenTutorial = document.getElementById('btnOpenTutorial');
+    const btnCloseTutorial = document.getElementById('btnCloseTutorial');
+    const btnUnderstoodTutorial = document.getElementById('btnUnderstoodTutorial');
+
+    function openTutorialModal() {
+      tutorialModal.classList.remove('hidden');
+    }
+
+    function closeTutorialModal() {
+      tutorialModal.classList.add('hidden');
+      localStorage.setItem(TUTORIAL_SEEN_KEY, 'true');
+    }
+
+    btnOpenTutorial.addEventListener('click', openTutorialModal);
+    btnCloseTutorial.addEventListener('click', closeTutorialModal);
+    btnUnderstoodTutorial.addEventListener('click', closeTutorialModal);
+
+    function checkFirstTimeTutorial() {
+      const hasSeen = localStorage.getItem(TUTORIAL_SEEN_KEY);
+      if (!hasSeen) {
+        openTutorialModal();
+      }
     }
 
     // --- Export Modal & File Naming Logic ---
@@ -657,7 +1852,7 @@
       const day = String(now.getDate()).padStart(2, '0');
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      return `ideaflow_${year}${month}${day}_${hours}${minutes}`;
+      return `whiteboard_${year}${month}${day}_${hours}${minutes}`;
     }
 
     btnOpenExportModal.addEventListener('click', () => {
@@ -700,7 +1895,16 @@
       showToast(`File disimpan: ${filename}`);
     });
 
-    // --- Import JSON Logic ---
+    // --- Import Modal & Smart Empty Canvas Auto-Offset Logic ---
+    const importModal = document.getElementById('importModal');
+    const importFileNameLabel = document.getElementById('importFileNameLabel');
+    const btnImportAppend = document.getElementById('btnImportAppend');
+    const btnImportReplace = document.getElementById('btnImportReplace');
+    const btnCancelImportModal = document.getElementById('btnCancelImportModal');
+
+    let pendingImportData = null;
+    let pendingFileName = '';
+
     document.getElementById('fileImport').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -710,13 +1914,12 @@
         try {
           const parsed = JSON.parse(event.target.result);
           if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
-            throw new Error('Struktur file JSON tidak sesuai format IdeaFlow');
+            throw new Error('Format file tidak sesuai dengan IdeaFlow');
           }
-          state.nodes = parsed.nodes || [];
-          state.connections = parsed.connections || [];
-          saveState();
-          reRenderAll();
-          showToast(`Berhasil import: ${file.name}`);
+          pendingImportData = parsed;
+          pendingFileName = file.name;
+          importFileNameLabel.textContent = `File: ${file.name}`;
+          importModal.classList.remove('hidden');
         } catch (err) {
           showToast(`Gagal Import: ${err.message}`, true);
         } finally {
@@ -726,15 +1929,112 @@
       reader.readAsText(file);
     });
 
+    btnCancelImportModal.addEventListener('click', () => {
+      importModal.classList.add('hidden');
+      pendingImportData = null;
+    });
+
+    // Smart Append Mode
+    btnImportAppend.addEventListener('click', () => {
+      if (!pendingImportData) return;
+
+      const idMap = new Map();
+      const newNodes = [];
+
+      let shiftX = 0;
+      let shiftY = 0;
+
+      if (state.nodes.length > 0 && pendingImportData.nodes.length > 0) {
+        let existMaxX = -Infinity;
+        let existMinY = Infinity;
+
+        state.nodes.forEach(n => {
+          if (n.x + NODE_WIDTH > existMaxX) existMaxX = n.x + NODE_WIDTH;
+          if (n.y < existMinY) existMinY = n.y;
+        });
+
+        let importMinX = Infinity;
+        let importMinY = Infinity;
+
+        pendingImportData.nodes.forEach(n => {
+          if (n.x < importMinX) importMinX = n.x;
+          if (n.y < importMinY) importMinY = n.y;
+        });
+
+        const GAP = 80;
+        shiftX = Math.round(existMaxX + GAP - importMinX);
+        shiftY = Math.round(existMinY - importMinY);
+      }
+
+      pendingImportData.nodes.forEach(n => {
+        const newId = 'node_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+        idMap.set(n.id, newId);
+        newNodes.push({
+          ...n,
+          id: newId,
+          stamp: n.stamp || null,
+          x: Math.round(n.x + shiftX),
+          y: Math.round(n.y + shiftY)
+        });
+      });
+
+      const newConnections = (pendingImportData.connections || []).map(c => ({
+        id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        from: idMap.get(c.from) || c.from,
+        to: idMap.get(c.to) || c.to,
+        fromSide: c.fromSide || 'right',
+        toSide: c.toSide || 'left'
+      })).filter(c => idMap.has(c.from) || state.nodes.some(n => n.id === c.from));
+
+      state.nodes = state.nodes.concat(newNodes);
+      state.connections = state.connections.concat(newConnections);
+
+      clearSelection();
+      newNodes.forEach(n => selectedNodeIds.add(n.id));
+
+      if (state.nodes.length > 0) {
+        lastUsedColorIdx = state.nodes[state.nodes.length - 1].colorIdx || 0;
+      }
+
+      saveState();
+      reRenderAll();
+      importModal.classList.add('hidden');
+      showToast(`Berhasil menambahkan ${newNodes.length} ide di area samping`);
+      pendingImportData = null;
+    });
+
+    // Replace Mode
+    btnImportReplace.addEventListener('click', () => {
+      if (!pendingImportData) return;
+
+      state.nodes = (pendingImportData.nodes || []).map(n => ({
+        ...n,
+        stamp: n.stamp || null
+      }));
+      state.connections = (pendingImportData.connections || []).map(normalizeConnection);
+      if (state.nodes.length > 0) {
+        lastUsedColorIdx = state.nodes[state.nodes.length - 1].colorIdx || 0;
+      }
+      clearSelection();
+
+      saveState();
+      reRenderAll();
+      importModal.classList.add('hidden');
+      showToast(`Canvas baru dimuat: ${pendingFileName}`);
+      pendingImportData = null;
+    });
+
     // --- Clear All Logic ---
     document.getElementById('btnClear').addEventListener('click', () => {
-      if (confirm('Hapus semua ide dan koneksi di kanvas ini?')) {
+      if (confirm('Hapus semua ide dan coretan di whiteboard ini?')) {
         state.nodes = [];
         state.connections = [];
+        clearSelection();
         nodesContainer.innerHTML = '';
         connectionsGroup.innerHTML = '';
+        endpointsGroup.innerHTML = '';
         saveState();
-        showToast('Kanvas telah dikosongkan');
+        showToast('Whiteboard telah dibersihkan');
       }
     });
 
@@ -744,9 +2044,11 @@
       state.nodes.forEach(renderNode);
       renderConnections();
       updateTransform();
+      checkFirstTimeTutorial();
     }
 
     init();
   </script>
 </body>
+
 </html>
