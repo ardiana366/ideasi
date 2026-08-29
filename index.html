@@ -321,7 +321,7 @@
       <!-- Nodes Container (Middle Z-Index) -->
       <div id="nodesContainer" class="absolute top-0 left-0 z-20"></div>
 
-      <!-- Top Overlay SVG Layer for Endpoints / Reconnection Handles (Always on top) -->
+      <!-- Top Overlay SVG Layer for Endpoints / Reconnection Handles & Line Actions (Always on top) -->
       <svg id="overlaySvgLayer"
         class="absolute top-0 left-0 w-[50000px] h-[50000px] pointer-events-none overflow-visible z-30">
         <g id="endpointsGroup"></g>
@@ -393,7 +393,7 @@
           <div>
             <strong class="text-sm text-slate-800 block">Tambahkan ke Canvas</strong>
             <span class="text-xs text-slate-500">Ditempatkan di area kosong di samping grup ide lama tanpa saling
-              menimpa.</span>
+              menimpa. Semua garis hubungan tetap terjaga.</span>
           </div>
         </button>
 
@@ -489,8 +489,8 @@
             </svg>
           </div>
           <div>
-            <span class="font-bold text-slate-900 block text-base">Hubungkan & Pindah Garis</span>
-            <p class="text-xs leading-relaxed text-slate-600">Tarik tepi oval untuk menghubungkan. <strong>Klik 1x pada garis</strong> untuk memunculkan titik handle bulat, lalu seret titik tersebut ke sisi manapun (atas, bawah, kiri, kanan) dari ide lain untuk memindahkan sambungannya.</p>
+            <span class="font-bold text-slate-900 block text-base">Hubungkan, Pindah Garis & Hapus Garis</span>
+            <p class="text-xs leading-relaxed text-slate-600">Tarik tepi oval untuk menghubungkan. <strong>Klik 1x pada garis</strong> untuk memunculkan tombol <strong>✕ (Hapus Garis)</strong> dan titik handle bulat untuk memindahkan sambungan ke sisi manapun (atas, bawah, kiri, kanan).</p>
           </div>
         </div>
 
@@ -587,6 +587,8 @@
     let _justInteractedWithElement = false; // Flag to prevent canvas pointerup from clearing
     let lastUsedColorIdx = 0;
     let activeToolbarNodeId = null;
+    let lastLineTapTime = 0;
+    let lastLineTapConnId = null;
 
     const NODE_WIDTH = 224;
     const NODE_HEIGHT = 88;
@@ -1490,7 +1492,7 @@
         if (connectingFromSide === 'right') cx1 += handleDistX;
         else if (connectingFromSide === 'left') cx1 -= handleDistX;
         else if (connectingFromSide === 'bottom') cy1 += handleDistY;
-        else if (connectingFromSide === 'top') cy1 -= handleDistY;
+        else if (connectingFromSide === 'top') cy1 += handleDistY;
 
         let cx2 = targetX, cy2 = targetY;
         if (targetSide === 'left') cx2 -= handleDistX;
@@ -1558,7 +1560,7 @@
         const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         hitPath.setAttribute('d', pathData);
         hitPath.setAttribute('stroke', 'transparent');
-        hitPath.setAttribute('stroke-width', '28');
+        hitPath.setAttribute('stroke-width', '36');
         hitPath.setAttribute('fill', 'none');
         hitPath.setAttribute('class', 'pointer-events-auto cursor-pointer');
 
@@ -1570,12 +1572,24 @@
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('fill', 'none');
         path.setAttribute('class', 'pointer-events-auto cursor-pointer hover:stroke-rose-600 transition-colors opacity-90');
-        path.setAttribute('title', 'Klik sekali untuk ubah sambungan, klik 2x untuk hapus');
+        path.setAttribute('title', 'Klik sekali untuk opsi garis, klik 2x untuk hapus');
 
         function selectThisConnection(e) {
           e.stopPropagation();
           e.preventDefault();
           _justInteractedWithElement = true;
+
+          const now = Date.now();
+          // Mobile & Desktop touch double tap check
+          if (lastLineTapConnId === conn.id && now - lastLineTapTime < 380) {
+            deleteConnection(conn.id);
+            lastLineTapTime = 0;
+            lastLineTapConnId = null;
+            return;
+          }
+
+          lastLineTapTime = now;
+          lastLineTapConnId = conn.id;
 
           selectedNodeIds.clear();
           hideNodeToolbar();
@@ -1601,13 +1615,7 @@
 
         path.addEventListener('dblclick', (e) => {
           e.stopPropagation();
-          state.connections = state.connections.filter(c => c.id !== conn.id);
-          selectedConnectionId = null;
-          document.body.classList.remove('line-selected-mode');
-          saveState();
-          renderConnections();
-          renderConnectionEndpoints();
-          showToast('Koneksi dihapus');
+          deleteConnection(conn.id);
         });
 
         connectionsGroup.appendChild(hitPath);
@@ -1617,7 +1625,17 @@
       renderConnectionEndpoints();
     }
 
-    // Render Draggable Handle Dots on Start & End of Selected Connection
+    function deleteConnection(connId) {
+      state.connections = state.connections.filter(c => c.id !== connId);
+      selectedConnectionId = null;
+      document.body.classList.remove('line-selected-mode');
+      saveState();
+      renderConnections();
+      renderConnectionEndpoints();
+      showToast('Koneksi dihapus');
+    }
+
+    // Render Draggable Handle Dots & Delete Button on Selected Connection
     function renderConnectionEndpoints() {
       endpointsGroup.innerHTML = '';
       if (!selectedConnectionId) return;
@@ -1632,6 +1650,67 @@
       const posA = getPortPosition(nodeA, conn.fromSide || (nodeB.x >= nodeA.x ? 'right' : 'left'));
       const posB = getPortPosition(nodeB, conn.toSide || (nodeB.x >= nodeA.x ? 'left' : 'right'));
 
+      // 1. Render Floating Delete Button at Midpoint of Selected Curve (Mobile friendly!)
+      const pathEl = document.getElementById(`edge_${conn.id}`);
+      if (pathEl) {
+        try {
+          const totalLen = pathEl.getTotalLength();
+          const midPt = pathEl.getPointAtLength(totalLen / 2);
+
+          const delG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          delG.setAttribute('class', 'pointer-events-auto cursor-pointer');
+
+          // Large hit area for easy touch (radius 24px)
+          const delHit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          delHit.setAttribute('cx', midPt.x);
+          delHit.setAttribute('cy', midPt.y);
+          delHit.setAttribute('r', '24');
+          delHit.setAttribute('fill', 'transparent');
+          delHit.setAttribute('stroke', 'transparent');
+
+          // Red circle badge
+          const delCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          delCircle.setAttribute('cx', midPt.x);
+          delCircle.setAttribute('cy', midPt.y);
+          delCircle.setAttribute('r', '13');
+          delCircle.setAttribute('fill', '#e11d48');
+          delCircle.setAttribute('stroke', '#ffffff');
+          delCircle.setAttribute('stroke-width', '2.5');
+          delCircle.setAttribute('filter', 'drop-shadow(0 2px 5px rgba(0,0,0,0.35))');
+
+          // White ✕ icon
+          const delText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          delText.setAttribute('x', midPt.x);
+          delText.setAttribute('y', midPt.y + 4.5);
+          delText.setAttribute('text-anchor', 'middle');
+          delText.setAttribute('fill', '#ffffff');
+          delText.setAttribute('font-size', '13px');
+          delText.setAttribute('font-weight', 'bold');
+          delText.setAttribute('font-family', 'system-ui, sans-serif');
+          delText.setAttribute('pointer-events', 'none');
+          delText.textContent = '✕';
+
+          delG.appendChild(delHit);
+          delG.appendChild(delCircle);
+          delG.appendChild(delText);
+          delG.setAttribute('title', 'Hapus Garis');
+
+          delG.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            _justInteractedWithElement = true;
+          });
+          delG.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            _justInteractedWithElement = true;
+            deleteConnection(conn.id);
+          });
+
+          endpointsGroup.appendChild(delG);
+        } catch (_) {}
+      }
+
+      // 2. Render Draggable Endpoint Handles
       [
         { pos: posA, isStart: true, node: nodeA },
         { pos: posB, isStart: false, node: nodeB }
@@ -1721,7 +1800,7 @@
         if (fixedSide === 'right') cx1 += handleDistX;
         else if (fixedSide === 'left') cx1 -= handleDistX;
         else if (fixedSide === 'bottom') cy1 += handleDistY;
-        else if (fixedSide === 'top') cy1 -= handleDistY;
+        else if (fixedSide === 'top') cy1 += handleDistY;
 
         let cx2 = targetX, cy2 = targetY;
         if (targetSide === 'left') cx2 -= handleDistX;
@@ -1978,13 +2057,20 @@
         });
       });
 
-      const newConnections = (pendingImportData.connections || []).map(c => ({
-        id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-        from: idMap.get(c.from) || c.from,
-        to: idMap.get(c.to) || c.to,
-        fromSide: c.fromSide || 'right',
-        toSide: c.toSide || 'left'
-      })).filter(c => idMap.has(c.from) || state.nodes.some(n => n.id === c.from));
+      const allNodeIds = new Set([
+        ...state.nodes.map(n => n.id),
+        ...newNodes.map(n => n.id)
+      ]);
+
+      const newConnections = (pendingImportData.connections || [])
+        .map(c => ({
+          id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+          from: idMap.get(c.from) || c.from,
+          to: idMap.get(c.to) || c.to,
+          fromSide: c.fromSide || 'right',
+          toSide: c.toSide || 'left'
+        }))
+        .filter(c => allNodeIds.has(c.from) && allNodeIds.has(c.to));
 
       state.nodes = state.nodes.concat(newNodes);
       state.connections = state.connections.concat(newConnections);
@@ -1999,7 +2085,7 @@
       saveState();
       reRenderAll();
       importModal.classList.add('hidden');
-      showToast(`Berhasil menambahkan ${newNodes.length} ide di area samping`);
+      showToast(`Berhasil menambahkan ${newNodes.length} ide & ${newConnections.length} garis`);
       pendingImportData = null;
     });
 
