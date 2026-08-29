@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Ideasi - Visual Idea Board</title>
+  <title>IdeaFlow - Visual Idea Board</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -25,12 +24,10 @@
       user-select: none;
       -webkit-user-select: none;
     }
-
     .grid-bg {
       background-size: 24px 24px;
       background-image: radial-gradient(circle, rgba(148, 163, 184, 0.22) 1px, transparent 1px);
     }
-
     .node-card {
       touch-action: none;
       backdrop-filter: blur(14px);
@@ -38,49 +35,51 @@
     }
   </style>
 </head>
-
 <body class="bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden flex flex-col font-sans select-none">
 
   <!-- Top Navigation / Controls -->
   <header class="absolute top-4 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
     <!-- Brand / Counter -->
-    <div
-      class="flex items-center gap-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 px-3.5 py-2 rounded-2xl shadow-xl pointer-events-auto">
+    <div class="flex items-center gap-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 px-3.5 py-2 rounded-2xl shadow-xl pointer-events-auto">
       <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
-      <span class="font-semibold text-xs tracking-wider text-slate-200">IDEASI</span>
-      <span id="nodeCountBadge"
-        class="text-[11px] bg-slate-700 px-2 py-0.5 rounded-full text-slate-300 font-mono">0</span>
+      <span class="font-semibold text-xs tracking-wider text-slate-200">IDEAFLOW</span>
+      <span id="nodeCountBadge" class="text-[11px] bg-slate-700 px-2 py-0.5 rounded-full text-slate-300 font-mono">0</span>
     </div>
 
     <!-- Direct Actions: Export (Custom Name), Import, Clear -->
     <div class="flex items-center gap-2 pointer-events-auto">
       <!-- Export JSON Button -->
-      <button id="btnOpenExportModal" title="Export JSON"
-        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5">
+      <button 
+        id="btnOpenExportModal" 
+        title="Export JSON" 
+        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5"
+      >
         <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
         </svg>
         <span class="hidden sm:inline font-medium">Export</span>
       </button>
 
       <!-- Import JSON Button -->
-      <label title="Import JSON"
-        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5 cursor-pointer">
+      <label 
+        title="Import JSON" 
+        class="px-3 py-2 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-2xl shadow-lg transition-all active:scale-95 text-xs flex items-center gap-1.5 cursor-pointer"
+      >
         <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l4 4m-4-4h12" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l4 4m-4-4h12"/>
         </svg>
         <span class="hidden sm:inline font-medium">Import</span>
         <input type="file" id="fileImport" accept=".json" class="hidden" />
       </label>
 
       <!-- Clear Canvas -->
-      <button id="btnClear" title="Bersihkan Semua Ide"
-        class="p-2.5 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-rose-950/80 hover:text-rose-400 text-slate-400 rounded-2xl shadow-lg transition-all active:scale-95 text-xs">
+      <button 
+        id="btnClear" 
+        title="Bersihkan Semua Ide" 
+        class="p-2.5 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 hover:bg-rose-950/80 hover:text-rose-400 text-slate-400 rounded-2xl shadow-lg transition-all active:scale-95 text-xs"
+      >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
         </svg>
       </button>
     </div>
@@ -88,8 +87,7 @@
 
   <!-- Interactive Canvas Viewport -->
   <main id="viewport" class="relative flex-1 w-full h-full overflow-hidden grid-bg cursor-grab active:cursor-grabbing">
-    <div id="world" class="absolute origin-top-left will-change-transform"
-      style="transform: translate(0px, 0px) scale(1);">
+    <div id="world" class="absolute origin-top-left will-change-transform" style="transform: translate(0px, 0px) scale(1);">
       <!-- SVG Connection Lines Layer -->
       <svg id="svgLayer" class="absolute top-0 left-0 w-[50000px] h-[50000px] pointer-events-none overflow-visible">
         <defs>
@@ -99,10 +97,9 @@
           </linearGradient>
         </defs>
         <g id="connectionsGroup"></g>
-        <path id="tempLine" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="6,4" fill="none"
-          class="hidden opacity-80" />
+        <path id="tempLine" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="6,4" fill="none" class="hidden opacity-80" />
       </svg>
-
+      
       <!-- Nodes Container -->
       <div id="nodesContainer" class="absolute top-0 left-0"></div>
     </div>
@@ -110,34 +107,36 @@
 
   <!-- Quick Input Bar (Sticky at Bottom) -->
   <footer class="absolute bottom-5 inset-x-0 mx-auto max-w-xl px-4 z-30 pointer-events-auto">
-    <form id="ideaForm"
-      class="flex items-center gap-2 bg-slate-800/90 backdrop-blur-xl border border-slate-700/80 p-2 rounded-2xl shadow-2xl focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all">
-      <input type="text" id="ideaInput" placeholder="Tulis ide cepat... (Enter)" autocomplete="off"
-        class="flex-1 bg-transparent px-3 py-2 text-sm text-slate-100 placeholder-slate-400 outline-none" />
-      <button type="submit"
-        class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white p-2.5 rounded-xl font-medium transition-all shadow-md flex items-center justify-center shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+    <form id="ideaForm" class="flex items-center gap-2 bg-slate-800/90 backdrop-blur-xl border border-slate-700/80 p-2 rounded-2xl shadow-2xl focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all">
+      <input 
+        type="text" 
+        id="ideaInput" 
+        placeholder="Tulis ide cepat... (Enter)" 
+        autocomplete="off"
+        class="flex-1 bg-transparent px-3 py-2 text-sm text-slate-100 placeholder-slate-400 outline-none"
+      />
+      <button 
+        type="submit" 
+        class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white p-2.5 rounded-xl font-medium transition-all shadow-md flex items-center justify-center shrink-0"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
         </svg>
       </button>
     </form>
   </footer>
 
   <!-- Notification Toast -->
-  <div id="toast"
-    class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800/95 border border-slate-700 text-slate-200 text-xs rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2">
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800/95 border border-slate-700 text-slate-200 text-xs rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2">
     Status message
   </div>
 
   <!-- Export Name Modal -->
-  <div id="exportModal"
-    class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="exportModal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-800 border border-slate-700/80 rounded-3xl w-full max-w-sm p-6 shadow-2xl text-slate-200">
       <div class="flex items-center gap-2.5 mb-4">
         <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
           </svg>
         </div>
         <div>
@@ -150,23 +149,31 @@
         <div>
           <label for="exportFilenameInput" class="block text-xs font-medium text-slate-300 mb-1.5">Nama File:</label>
           <div class="relative flex items-center">
-            <input type="text" id="exportFilenameInput" placeholder="nama_projek_ide"
+            <input 
+              type="text" 
+              id="exportFilenameInput" 
+              placeholder="nama_projek_ide"
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono pr-14"
-              required />
+              required
+            />
             <span class="absolute right-3.5 text-xs text-slate-500 font-mono pointer-events-none">.json</span>
           </div>
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-2">
-          <button type="button" id="btnCloseExportModal"
-            class="px-4 py-2 bg-slate-700/60 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all">
+          <button 
+            type="button" 
+            id="btnCloseExportModal" 
+            class="px-4 py-2 bg-slate-700/60 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all"
+          >
             Batal
           </button>
-          <button type="submit"
-            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-medium transition-all shadow-md flex items-center gap-1.5">
+          <button 
+            type="submit" 
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-medium transition-all shadow-md flex items-center gap-1.5"
+          >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
             </svg>
             Download File
           </button>
@@ -215,8 +222,9 @@
     function showToast(msg, isError = false) {
       const toast = document.getElementById('toast');
       toast.textContent = msg;
-      toast.className = `fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border text-xs rounded-xl shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-0 ${isError ? 'bg-rose-900/90 border-rose-700 text-rose-100' : 'bg-slate-800/95 border-slate-700 text-slate-100'
-        }`;
+      toast.className = `fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border text-xs rounded-xl shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-0 ${
+        isError ? 'bg-rose-900/90 border-rose-700 text-rose-100' : 'bg-slate-800/95 border-slate-700 text-slate-100'
+      }`;
       setTimeout(() => {
         toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-800/95 border border-slate-700 text-slate-200 text-xs rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2';
       }, 3000);
@@ -236,36 +244,104 @@
       world.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
     }
 
-    let isPanning = false;
-    let startPan = { x: 0, y: 0 };
+    // Multi-Touch Pointer Tracking for Pinch-to-Zoom & Pan
+    const activePointers = new Map();
+    let initialPinchDistance = null;
+    let initialZoom = 1;
+    let initialPan = { x: 0, y: 0 };
+    let initialMidpoint = { x: 0, y: 0 };
+    let startSinglePan = { x: 0, y: 0 };
+    let isSinglePanning = false;
+
+    function getDistance(p1, p2) {
+      const dx = p1.clientX - p2.clientX;
+      const dy = p1.clientY - p2.clientY;
+      return Math.hypot(dx, dy);
+    }
+
+    function getMidpoint(p1, p2) {
+      return {
+        x: (p1.clientX + p2.clientX) / 2,
+        y: (p1.clientY + p2.clientY) / 2
+      };
+    }
 
     viewport.addEventListener('pointerdown', (e) => {
       if (e.target === viewport || e.target === world || e.target.id === 'svgLayer') {
-        isPanning = true;
-        startPan = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
-        viewport.setPointerCapture(e.pointerId);
+        activePointers.set(e.pointerId, e);
+        try { viewport.setPointerCapture(e.pointerId); } catch (_) {}
+
+        if (activePointers.size === 1) {
+          isSinglePanning = true;
+          startSinglePan = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+        } else if (activePointers.size === 2) {
+          isSinglePanning = false;
+          const [p1, p2] = Array.from(activePointers.values());
+          initialPinchDistance = getDistance(p1, p2);
+          initialZoom = state.zoom;
+          initialPan = { ...state.pan };
+          initialMidpoint = getMidpoint(p1, p2);
+        }
       }
     });
 
     viewport.addEventListener('pointermove', (e) => {
-      if (isPanning) {
-        state.pan.x = e.clientX - startPan.x;
-        state.pan.y = e.clientY - startPan.y;
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, e);
+
+      // 1 Finger Pan
+      if (activePointers.size === 1 && isSinglePanning) {
+        state.pan.x = e.clientX - startSinglePan.x;
+        state.pan.y = e.clientY - startSinglePan.y;
         updateTransform();
+      } 
+      // 2 Fingers Pinch-to-Zoom & Dual-finger Pan
+      else if (activePointers.size === 2 && initialPinchDistance) {
+        const [p1, p2] = Array.from(activePointers.values());
+        const currentDistance = getDistance(p1, p2);
+        const currentMidpoint = getMidpoint(p1, p2);
+
+        if (currentDistance > 0) {
+          const rawScale = (currentDistance / initialPinchDistance) * initialZoom;
+          const newZoom = Math.min(Math.max(0.3, rawScale), 3.0);
+
+          const rect = viewport.getBoundingClientRect();
+          const focalX = initialMidpoint.x - rect.left;
+          const focalY = initialMidpoint.y - rect.top;
+
+          state.pan.x = focalX - (focalX - initialPan.x) * (newZoom / initialZoom) + (currentMidpoint.x - initialMidpoint.x);
+          state.pan.y = focalY - (focalY - initialPan.y) * (newZoom / initialZoom) + (currentMidpoint.y - initialMidpoint.y);
+          state.zoom = newZoom;
+          updateTransform();
+        }
       }
     });
 
-    viewport.addEventListener('pointerup', (e) => {
-      if (isPanning) {
-        isPanning = false;
-        try { viewport.releasePointerCapture(e.pointerId); } catch (_) { }
+    function handlePointerUp(e) {
+      if (activePointers.has(e.pointerId)) {
+        activePointers.delete(e.pointerId);
+        try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
       }
-    });
 
+      if (activePointers.size === 1) {
+        const remainingPointer = Array.from(activePointers.values())[0];
+        isSinglePanning = true;
+        startSinglePan = { x: remainingPointer.clientX - state.pan.x, y: remainingPointer.clientY - state.pan.y };
+        initialPinchDistance = null;
+      } else if (activePointers.size === 0) {
+        isSinglePanning = false;
+        initialPinchDistance = null;
+      }
+    }
+
+    viewport.addEventListener('pointerup', handlePointerUp);
+    viewport.addEventListener('pointercancel', handlePointerUp);
+
+    // Zoom via Mouse Wheel (Desktop)
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const zoomFactor = 0.001;
-      const newZoom = Math.min(Math.max(0.4, state.zoom - e.deltaY * zoomFactor), 2.5);
+      const zoomFactor = 0.0012;
+      const newZoom = Math.min(Math.max(0.3, state.zoom - e.deltaY * zoomFactor), 3.0);
       const rect = viewport.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
@@ -306,7 +382,7 @@
       el.id = node.id;
       el.className = 'node-card absolute p-3.5 bg-slate-800/95 border border-slate-700/80 hover:border-slate-500 rounded-2xl shadow-xl w-48 text-xs text-slate-200 cursor-move transition-shadow hover:shadow-2xl';
       el.style.transform = `translate(${node.x}px, ${node.y}px)`;
-
+      
       el.innerHTML = `
         <div class="flex items-start justify-between gap-1 mb-1.5 pointer-events-none">
           <span class="w-2 h-2 rounded-full shrink-0 mt-0.5" style="background-color: ${node.color}"></span>
@@ -357,7 +433,7 @@
         if (isDraggingNode) {
           isDraggingNode = false;
           el.classList.remove('z-20', 'border-indigo-500/80');
-          try { el.releasePointerCapture(e.pointerId); } catch (_) { }
+          try { el.releasePointerCapture(e.pointerId); } catch (_) {}
           saveState();
         }
       });
@@ -381,6 +457,105 @@
       saveState();
     }
 
+    // --- Obstacle Avoidance Routing Algorithm for Clean Wires ---
+    function getNodeBounds(node, padding = 16) {
+      const el = document.getElementById(node.id);
+      const w = el ? el.offsetWidth : 192;
+      const h = el ? el.offsetHeight : 70;
+      return {
+        left: node.x - padding,
+        top: node.y - padding,
+        right: node.x + w + padding,
+        bottom: node.y + h + padding,
+        width: w,
+        height: h,
+        centerX: node.x + w / 2,
+        centerY: node.y + h / 2
+      };
+    }
+
+    function lineIntersectsRect(p1, p2, rect) {
+      // Periksa apakah segmen garis lurus memotong kotak pembatas node
+      const minX = Math.min(p1.x, p2.x);
+      const maxX = Math.max(p1.x, p2.x);
+      const minY = Math.min(p1.y, p2.y);
+      const maxY = Math.max(p1.y, p2.y);
+
+      // Simple AABB Box overlap test
+      if (maxX < rect.left || minX > rect.right || maxY < rect.top || minY > rect.bottom) {
+        return false;
+      }
+
+      // Check against segment intersection with 4 sides of rect
+      function ccw(A, B, C) {
+        return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+      }
+      function intersect(A, B, C, D) {
+        return ccw(A, C, D) !== ccw(B, C, D) && ccw(A, B, C) !== ccw(A, B, D);
+      }
+
+      const tl = { x: rect.left, y: rect.top };
+      const tr = { x: rect.right, y: rect.top };
+      const br = { x: rect.right, y: rect.bottom };
+      const bl = { x: rect.left, y: rect.bottom };
+
+      return intersect(p1, p2, tl, tr) ||
+             intersect(p1, p2, tr, br) ||
+             intersect(p1, p2, br, bl) ||
+             intersect(p1, p2, bl, tl);
+    }
+
+    function generateSmartPath(nodeA, nodeB, allNodes) {
+      const bA = getNodeBounds(nodeA, 0);
+      const bB = getNodeBounds(nodeB, 0);
+
+      // Best Connection Anchor Points: Hubungkan dari sisi terdekat (Kanan/Kiri)
+      let startX = bA.right;
+      let startY = bA.centerY;
+      let endX = bB.left;
+      let endY = bB.centerY;
+
+      if (bA.centerX > bB.centerX) {
+        startX = bA.left;
+        endX = bB.right;
+      }
+
+      const pStart = { x: startX, y: startY };
+      const pEnd = { x: endX, y: endY };
+
+      // Cari node rintangan di antara nodeA dan nodeB
+      const obstacleNodes = allNodes.filter(n => n.id !== nodeA.id && n.id !== nodeB.id);
+      let hitNode = null;
+      let maxOverlap = 0;
+
+      for (const obs of obstacleNodes) {
+        const obsBounds = getNodeBounds(obs, 20);
+        if (lineIntersectsRect(pStart, pEnd, obsBounds)) {
+          // Cari rintangan terdekat/terbesar
+          hitNode = obsBounds;
+          break;
+        }
+      }
+
+      // Jika ada ide lain yang terhalang, belokkan rute kurva melewati atas atau bawah kotak tersebut
+      if (hitNode) {
+        const detourAboveY = hitNode.top - 20;
+        const detourBelowY = hitNode.bottom + 20;
+        const midY = (pStart.y + pEnd.y) / 2;
+
+        // Pilih rute memutar terdekat (atas atau bawah)
+        const chosenY = Math.abs(midY - detourAboveY) < Math.abs(midY - detourBelowY) ? detourAboveY : detourBelowY;
+        const midX = hitNode.centerX;
+
+        // Rute 2 segmen Bezier lengkung melingkari rintangan
+        return `M ${startX} ${startY} Q ${startX + (midX - startX) * 0.5} ${chosenY}, ${midX} ${chosenY} T ${endX} ${endY}`;
+      }
+
+      // Standar Bezier Smooth jika jalan bersih
+      const dx = Math.abs(endX - startX) * 0.5;
+      return `M ${startX} ${startY} C ${startX + (startX < endX ? dx : -dx)} ${startY}, ${endX + (startX < endX ? -dx : dx)} ${endY}, ${endX} ${endY}`;
+    }
+
     // --- Connect Line Logic (SVG Drag) ---
     let connectingFromId = null;
 
@@ -392,11 +567,15 @@
         const fromNode = state.nodes.find(n => n.id === connectingFromId);
         if (!fromNode) return;
 
-        const fromPos = getNodeCenter(fromNode);
+        const bFrom = getNodeBounds(fromNode, 0);
         const mouseWorldX = (e.clientX - state.pan.x) / state.zoom;
         const mouseWorldY = (e.clientY - state.pan.y) / state.zoom;
 
-        tempLine.setAttribute('d', getBezierPath(fromPos.x, fromPos.y, mouseWorldX, mouseWorldY));
+        const startX = mouseWorldX > bFrom.centerX ? bFrom.right : bFrom.left;
+        const startY = bFrom.centerY;
+        const dx = Math.abs(mouseWorldX - startX) * 0.5;
+
+        tempLine.setAttribute('d', `M ${startX} ${startY} C ${startX + dx} ${startY}, ${mouseWorldX - dx} ${mouseWorldY}, ${mouseWorldX} ${mouseWorldY}`);
       }
 
       function onUp(e) {
@@ -407,8 +586,8 @@
         const targetEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.node-card');
         if (targetEl && targetEl.id !== connectingFromId) {
           const targetId = targetEl.id;
-          const exists = state.connections.some(c =>
-            (c.from === connectingFromId && c.to === targetId) ||
+          const exists = state.connections.some(c => 
+            (c.from === connectingFromId && c.to === targetId) || 
             (c.from === targetId && c.to === connectingFromId)
           );
 
@@ -425,18 +604,6 @@
       window.addEventListener('pointerup', onUp);
     }
 
-    function getNodeCenter(node) {
-      const el = document.getElementById(node.id);
-      const w = el ? el.offsetWidth : 192;
-      const h = el ? el.offsetHeight : 70;
-      return { x: node.x + w / 2, y: node.y + h / 2 };
-    }
-
-    function getBezierPath(x1, y1, x2, y2) {
-      const dx = Math.abs(x2 - x1) * 0.5;
-      return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-    }
-
     function renderConnections() {
       connectionsGroup.innerHTML = '';
       state.connections.forEach((conn, index) => {
@@ -444,16 +611,15 @@
         const nodeB = state.nodes.find(n => n.id === conn.to);
         if (!nodeA || !nodeB) return;
 
-        const posA = getNodeCenter(nodeA);
-        const posB = getNodeCenter(nodeB);
+        const smartPathData = generateSmartPath(nodeA, nodeB, state.nodes);
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', getBezierPath(posA.x, posA.y, posB.x, posB.y));
+        path.setAttribute('d', smartPathData);
         path.setAttribute('stroke', 'url(#edgeGradient)');
         path.setAttribute('stroke-width', '2.5');
         path.setAttribute('fill', 'none');
         path.setAttribute('class', 'pointer-events-auto cursor-pointer hover:stroke-rose-400 transition-colors opacity-90');
-        path.setAttribute('title', 'Klik dua kali untuk hapus');
+        path.setAttribute('title', 'Klik dua kali untuk hapus garis koneksi');
 
         path.addEventListener('dblclick', () => {
           state.connections.splice(index, 1);
@@ -512,7 +678,6 @@
       let rawName = exportFilenameInput.value.trim();
       if (!rawName) rawName = getDefaultFilename();
 
-      // Bersihkan karakter terlarang untuk nama file & hapus akhiran .json jika diketik manual
       let sanitized = rawName.replace(/\.json$/i, '').replace(/[/\\?%*:|"<>]/g, '_');
       const filename = `${sanitized}.json`;
 
@@ -584,5 +749,4 @@
     init();
   </script>
 </body>
-
 </html>
